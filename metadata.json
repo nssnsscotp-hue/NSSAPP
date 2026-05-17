@@ -1,0 +1,10 @@
+{
+  "name": "NSS College Ottapalam Units 36 & 94",
+  "description": "An integrated digital platform for NSS Volunteers of NSS College Ottapalam to manage attendance, announcements, quizzes, resource materials via Google Drive, and community initiatives.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
