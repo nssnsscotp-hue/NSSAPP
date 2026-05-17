@@ -42,7 +42,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/'}>
       <Layout>
         <Routes>
           <Route path="/login" element={<Login />} />
