@@ -9,8 +9,10 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const basePath = env.VITE_BASE_PATH || '/';
+  
   return {
-    base: env.VITE_BASE_PATH || './',
+    base: basePath,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
