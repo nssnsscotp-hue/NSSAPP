@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import Home from './pages/Home';
@@ -42,7 +42,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <HashRouter>
       <Layout>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -78,14 +78,14 @@ export default function App() {
               <div className="text-center">
                 <h1 className="text-4xl font-black text-slate-900 mb-4">404</h1>
                 <p className="text-slate-500 mb-8 uppercase tracking-widest font-bold">Route Not Found</p>
-                <a href={import.meta.env.BASE_URL} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">
+                <Link to="/" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">
                   Go Home
-                </a>
+                </Link>
               </div>
             </div>
           } />
         </Routes>
       </Layout>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
