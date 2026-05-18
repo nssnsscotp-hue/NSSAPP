@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  CheckCircle, XCircle, Loader2, UserCheck, Shield, 
+  CheckCircle, XCircle, Loader2, UserCheck, Shield, ShieldAlert,
   ChevronRight, Search, UserPlus, Star, Trash2
 } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
@@ -36,24 +36,33 @@ export default function RegistrationAdmin() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [pendRes, appRes] = await Promise.all([
-        supabase.from('pending_requests').select('*').order('created_at', { ascending: false }),
-        supabase.from('profiles').select('*').order('created_at', { ascending: false })
-      ]);
+      setError('');
+      
+      const pendRes = await supabase.from('pending_requests').select('*').order('created_at', { ascending: false });
+      const appRes = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      
+      if (pendRes.error) {
+        console.error("Pending Requests Error:", pendRes.error);
+        if (pendRes.error.message?.includes('RLS')) {
+          setError("Database Access Denied: Check Supabase RLS Policies.");
+        } else {
+          setError("Connection Error: " + pendRes.error.message);
+        }
+      }
       
       if (pendRes.data) {
-        setPending(pendRes.data.map(p => ({
+        setPending(pendRes.data.map((p: any) => ({
           name: p.full_name,
           unit: p.unit,
           mobile: p.mobile,
           username: p.username,
-          row: p.id, // Using UUID as "row" identifier
+          row: p.id,
           password: p.password
         })));
       }
       
       if (appRes.data) {
-        setApproved(appRes.data.map(a => ({
+        setApproved(appRes.data.map((a: any) => ({
           name: a.full_name,
           unit: a.unit,
           mobile: a.mobile,
@@ -62,12 +71,15 @@ export default function RegistrationAdmin() {
           role: a.role
         })));
       }
-    } catch (err) { 
+    } catch (err: any) { 
       console.error("Fetch error:", err); 
+      setError("Fatal Connection Error. Check console.");
     } finally { 
       setLoading(false); 
     }
   };
+
+  const [error, setError] = useState('');
   
   useEffect(() => {
     fetchData();
@@ -191,6 +203,30 @@ export default function RegistrationAdmin() {
           </div>
         </div>
       </header>
+
+      {error && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-red-50 border border-red-100 rounded-[2rem] text-red-600 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-red-600/5"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shrink-0">
+              <ShieldAlert size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest">Database Sync Alert</p>
+              <p className="text-sm font-bold opacity-80">{error}</p>
+            </div>
+          </div>
+          <button 
+            onClick={fetchData}
+            className="px-6 py-3 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 transition-all"
+          >
+            Retry Connection
+          </button>
+        </motion.div>
+      )}
 
       <AnimatePresence>
         {showRegForm && (
