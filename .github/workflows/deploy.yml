@@ -28,8 +28,18 @@ jobs:
 
       - name: Build
         run: |
-          export VITE_BASE_PATH="/${{ github.event.repository.name }}/"
-          npm run build
+          export REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          # If it's a user/org page, base is /, otherwise it's /repo/
+          if [[ "$REPO_NAME" == *.github.io ]]; then
+            export VITE_BASE_PATH="/"
+          else
+            export VITE_BASE_PATH="/$REPO_NAME/"
+          fi
+          echo "Building for GitHub Pages with BASE_PATH: $VITE_BASE_PATH"
+          if [[ "$VITE_BASE_PATH" == "/" ]]; then
+            sed -i "s/pathSegmentsToKeep = 1/pathSegmentsToKeep = 0/" public/404.html
+          fi
+          npm run build -- --base="$VITE_BASE_PATH"
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
