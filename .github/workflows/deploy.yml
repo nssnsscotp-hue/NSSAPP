@@ -28,9 +28,8 @@ jobs:
 
       - name: Build
         run: |
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
-          export VITE_BASE_PATH="/$REPO_NAME/"
-          echo "Building with VITE_BASE_PATH=$VITE_BASE_PATH"
+          export VITE_BASE_PATH="/${{ github.event.repository.name }}/"
+          echo "Building for GitHub Pages at: $VITE_BASE_PATH"
           npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
