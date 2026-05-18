@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
-  const basePath = env.VITE_BASE_PATH || '/';
+  const basePath = process.env.VITE_BASE_PATH || env.VITE_BASE_PATH || '/';
   
   return {
     base: basePath,
