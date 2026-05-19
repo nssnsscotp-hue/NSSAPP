@@ -37,7 +37,7 @@ jobs:
             export VITE_BASE_PATH="/$REPO_NAME/"
           fi
           echo "Building for GitHub Pages with base: $VITE_BASE_PATH"
-          npm run build -- --base="$VITE_BASE_PATH"
+          npm run build:client
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
