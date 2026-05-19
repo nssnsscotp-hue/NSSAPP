@@ -35,6 +35,7 @@ const mockSupabase = {
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     getSession: () => Promise.resolve({ data: { session: null }, error: null }),
     signInWithPassword: () => Promise.resolve({ data: {}, error: null }),
+    signInAnonymously: () => Promise.resolve({ data: { session: {} }, error: null }),
     signOut: () => Promise.resolve({ error: null }),
   }
 } as any;

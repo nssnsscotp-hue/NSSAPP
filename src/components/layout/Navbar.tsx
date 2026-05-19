@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X, LogOut, Home, Bell, User, ShieldAlert, Heart, MessageSquare, Image, HelpCircle, Trophy, Contact, BarChart3, Library, GraduationCap, Calendar } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { supabase } from '@/src/lib/supabase';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,10 +12,30 @@ export default function Navbar() {
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin';
 
-  const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
+  const handleLogout = async () => {
+    try {
+      console.log('Logout initiated...');
+      // 1. Sign out from Supabase if possible
+      await supabase.auth.signOut().catch(() => {});
+      
+      // 2. Clear all auth data
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('role');
+      localStorage.removeItem('user');
+      localStorage.removeItem('userId');
       localStorage.clear();
+      
+      console.log('Storage cleared, redirecting...');
+      
+      // 3. Force redirect using multiple methods to be sure
       navigate('/login');
+      window.location.hash = '/login';
+      window.location.reload(); 
+    } catch (error) {
+      console.error('Logout failed:', error);
+      localStorage.clear();
+      window.location.href = '/#/login';
+      window.location.reload();
     }
   };
 
@@ -82,7 +103,7 @@ export default function Navbar() {
                 className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-red-600 transition-all duration-300 shadow-lg shadow-slate-900/20"
                 title="Logout"
               >
-                <LogOut size={18} />
+                <LogOut size={18} className="pointer-events-none" />
               </button>
             </div>
           </div>
@@ -131,7 +152,7 @@ export default function Navbar() {
                   onClick={handleLogout}
                   className="w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={18} className="pointer-events-none" />
                   Logout Account
                 </button>
               </div>

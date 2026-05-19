@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Calendar, User, Heart, MessageSquare, Image, Trophy, School, MapPin, Loader2, BarChart3, Library, GraduationCap, Star, Sparkles, ArrowRight } from 'lucide-react';
+import { Bell, Calendar, User, Heart, MessageSquare, Image, Trophy, School, MapPin, Loader2, BarChart3, Library, GraduationCap, Star, Sparkles, ArrowRight, Instagram, MessageCircle, Globe, ExternalLink } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
 import { Highlight } from '@/src/pages/types';
 import { cn } from '@/src/lib/utils';
@@ -337,6 +337,51 @@ export default function Home() {
                 </Link>
               </div>
             </div>
+
+            {/* Official Portals Section */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="pro-heading text-lg text-slate-900 underline decoration-brand-500 underline-offset-8">Official Portals</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                <a 
+                  href="https://nss.gov.in/en" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="pro-card p-5 border-slate-100 hover:border-brand-200 group flex items-center justify-between transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
+                      <Globe size={20} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-xs uppercase italic tracking-tight text-slate-900">National NSS</h4>
+                      <p className="text-[10px] font-medium text-slate-400">Official Government Portal</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-slate-300 group-hover:text-brand-600 transition-colors" />
+                </a>
+
+                <a 
+                  href="https://mybharat.gov.in/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="pro-card p-5 border-slate-100 hover:border-brand-200 group flex items-center justify-between transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
+                      <Star size={20} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-xs uppercase italic tracking-tight text-slate-900">MyBharat Portal</h4>
+                      <p className="text-[10px] font-medium text-slate-400">Volunteer Opportunities</p>
+                    </div>
+                  </div>
+                  <ExternalLink size={14} className="text-slate-300 group-hover:text-brand-600 transition-colors" />
+                </a>
+              </div>
+            </div>
           </aside>
         </div>
       </main>
@@ -375,11 +420,24 @@ export default function Home() {
             <div className="space-y-8">
                <h6 className="pro-label text-white">Social Influence</h6>
                <div className="flex gap-4">
-                  {[MessageSquare, Heart, GraduationCap].map((Icon, i) => (
-                    <a key={i} href="#" className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-brand-600 transition-all duration-500">
-                      <Icon size={24} />
-                    </a>
-                  ))}
+                  <a 
+                    href="https://www.instagram.com/nss_nsscotp?igsh=eDRsODA4MTFobzYy" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-brand-600 transition-all duration-500"
+                    title="Official Instagram"
+                  >
+                    <Instagram size={24} />
+                  </a>
+                  <a 
+                    href="https://chat.whatsapp.com/Brz2cw30s1VCwJjAsot8rg" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-14 h-14 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-brand-600 transition-all duration-500"
+                    title="WhatsApp Group"
+                  >
+                    <MessageCircle size={24} />
+                  </a>
                </div>
             </div>
           </div>

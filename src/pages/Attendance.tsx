@@ -99,6 +99,10 @@ export default function Attendance() {
     setStatus(null);
 
     try {
+      // Ensure session for RLS
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      if (!existingSession) await supabase.auth.signInAnonymously();
+
       // 1. Verify Code and Status
       const targetProgram = programs.find(p => p.ProgramID === programID);
       

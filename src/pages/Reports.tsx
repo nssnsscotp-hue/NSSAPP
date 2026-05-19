@@ -37,6 +37,10 @@ export default function Reports() {
 
     setLoading(true);
     try {
+      // Ensure session for RLS
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      if (!existingSession) await supabase.auth.signInAnonymously();
+
       const fileExt = formData.file.name.split('.').pop();
       const filePath = `${formData.folder}/${formData.program}_${Date.now()}.${fileExt}`;
 

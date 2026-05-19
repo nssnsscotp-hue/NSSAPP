@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle, XCircle, Loader2, UserCheck, Shield, ShieldAlert,
   ChevronRight, Search, UserPlus, Star, Trash2
@@ -16,6 +16,7 @@ interface Volunteer {
   username: string;
   row: string;
   role?: string;
+  password?: string;
 }
 
 export default function RegistrationAdmin() {
@@ -104,27 +105,79 @@ export default function RegistrationAdmin() {
       if (!session) await supabase.auth.signInAnonymously();
 
       if (action === 'approve') {
-        const userToApprove = pending.find(p => p.row.toString() === id);
-        if (!userToApprove) return;
+        const userToApprove = pending.find(p => p.row && (p.row.toString() === id.toString() || p.username.toLowerCase() === id.toString().toLowerCase()));
+        
+        if (!userToApprove) {
+          console.error("User not found in pending list. Looking for ID:", id);
+          console.log("Current pending items:", pending);
+          throw new Error("User not found in the pending list. Try refreshing.");
+        }
+
+        console.log("Attempting to approve user:", userToApprove);
+
+        // Ensure we have a valid UUID for the profiles table
+        let newProfileId = '';
+        const generateUUID = () => {
+          try {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+              return crypto.randomUUID();
+            }
+          } catch (e) {}
+          // Manual fallback that is a VALID UUID format
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        };
+        
+        newProfileId = userToApprove.row; // Use the same ID as the pending request
 
         // 1. Insert into profiles
-        const { error: insErr } = await supabase.from('profiles').insert([{
-          username: userToApprove.username,
+        const profileData: any = {
+          id: newProfileId, 
+          username: userToApprove.username.toLowerCase(),
           full_name: userToApprove.name,
           unit: userToApprove.unit,
           mobile: userToApprove.mobile,
           password: (userToApprove as any).password,
           role: 'volunteer',
-          points: 0
-        }]);
-        if (insErr) throw insErr;
+          points: 0,
+          created_at: new Date().toISOString()
+        };
 
-        // 2. Delete from pending
-        const { error } = await supabase.from('pending_requests').delete().eq('id', id);
-        if (error && isNumeric) {
-          await supabase.from('pending_requests').delete().eq('row', numericId);
+        console.log("Attempting profile creation with ID:", newProfileId);
+
+        let { error: insErr } = await supabase.from('profiles').insert([profileData]);
+        
+        if (insErr) {
+          console.error("Primary Insertion Failed:", insErr);
+          
+          // If the pending row ID failed (maybe because it's not a UUID or not in Auth), 
+          // try a fresh UUID as a last resort, but we know this might hit the FK constraint if one exists.
+          if (insErr.message?.includes('invalid input syntax for type uuid') || insErr.message?.includes('violates foreign key constraint')) {
+            const fallbackId = '00000000-0000-4xxx-yxxx-' + Math.random().toString(16).slice(2, 14).padStart(12, '0');
+            console.log("Attempting fallback with random UUID:", fallbackId);
+            const { error: insErr2 } = await supabase.from('profiles').insert([{ ...profileData, id: fallbackId }]);
+            insErr = insErr2;
+          }
         }
-        alert("User Approved Successfully!");
+
+        if (insErr) {
+          throw new Error(`Profile Creation Failed: ${insErr.message}. This usually means the 'profiles' table has a Foreign Key constraint to 'auth.users' but no Auth user exists for this person. Please check your Supabase Database Schema.`);
+        }
+
+        // 2. Delete from pending_requests
+        // Try deleting by both 'id' and 'row' to be sure
+        const { error: delErr } = await supabase.from('pending_requests').delete().eq('id', userToApprove.row);
+        
+        if (delErr) {
+          console.warn("Could not delete from pending (maybe already gone?):", delErr);
+          // Try by username as backup
+          await supabase.from('pending_requests').delete().eq('username', userToApprove.username);
+        }
+        
+        alert(`Success! ${userToApprove.name} is now an active volunteer.`);
       } else if (action === 'reject') {
         const { error } = await supabase.from('pending_requests').delete().eq('id', id);
         if (error && isNumeric) {
@@ -163,6 +216,10 @@ export default function RegistrationAdmin() {
 
     setActioning('register');
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       const hashedPassword = await bcrypt.hash(regData.password, 10);
       
       const { error } = await supabase.from('pending_requests').insert([{

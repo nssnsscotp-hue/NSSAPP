@@ -69,7 +69,21 @@ export default function Login() {
     }
     
     try {
+      console.log("Starting login process for:", sanitizedUser);
+      setLoading(true);
+      setError('');
+      
+      // Add a timeout to the entire login process
+      const loginTimeout = setTimeout(() => {
+        if (loading) {
+          console.warn("Login timed out after 15s");
+          setError("Connection timeout. Please check your internet or try again.");
+          setLoading(false);
+        }
+      }, 15000);
+
       // 1. Check if user is in profiles (Approved)
+      console.log("Fetching profile from Supabase...");
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('*')
@@ -78,25 +92,35 @@ export default function Login() {
 
       if (profileErr) {
         console.error("Supabase profile fetch error:", profileErr);
-        throw new Error("Unable to connect to database. Check credentials.");
+        clearTimeout(loginTimeout);
+        setError(`Database unreachable: ${profileErr.message}`);
+        setLoading(false);
+        return;
       }
 
       if (profile) {
+        console.log("User found in profiles. Table ID:", profile.id);
         const hashedPassword = profile.password;
         
-        // Verify we have a string that looks like a password
         if (typeof hashedPassword === 'string' && hashedPassword.length >= 1) {
           try {
+            console.log("Verifying password...");
             let isMatch = false;
+            
             if (hashedPassword.startsWith('$2') && hashedPassword.length > 20) {
-              // It looks like a bcrypt hash
+              console.log("Detected bcrypt hash, comparing...");
               isMatch = await bcrypt.compare(sanitizedPass, hashedPassword);
             } else {
-              // Plain text or short string comparison
+              console.log("Simple password detected, comparing directly...");
               isMatch = hashedPassword === sanitizedPass;
             }
 
+            console.log("Password match result:", isMatch);
+
             if (isMatch) {
+              clearTimeout(loginTimeout);
+              console.log("Success! Setting session and navigating...");
+              
               localStorage.setItem("isLoggedIn", "true");
               localStorage.setItem("user", profile.username);
               localStorage.setItem("userId", profile.id);
@@ -104,38 +128,51 @@ export default function Login() {
               localStorage.setItem("name", profile.full_name);
               localStorage.setItem("phone", profile.mobile || "");
               localStorage.setItem("unit", profile.unit || "");
-              navigate('/');
+              
+              // Short delay to ensure localStorage is written before navigation
+              setTimeout(() => {
+                setLoading(false);
+                navigate('/');
+              }, 100);
               return;
             } else {
-              // Detailed error for common admin accounts to help fix
-              if (sanitizedUser === 'admin_user') {
-                setError(`Incorrect password for ${sanitizedUser}. Ensure you are typing it correctly.`);
-              } else {
-                setError("Incorrect password for " + sanitizedUser);
-              }
+              clearTimeout(loginTimeout);
+              setError("Incorrect password. Please check and try again.");
+              setLoading(false);
               return;
             }
           } catch (bcryptErr) {
-            console.error("Bcrypt comparison error:", bcryptErr);
-            setError("Security verify error. Try again.");
+            console.error("Password verification error:", bcryptErr);
+            clearTimeout(loginTimeout);
+            setError("Password check failed. Try again.");
+            setLoading(false);
             return;
           }
         } else {
-          setError("Account inactive: No password set. Please use Register.");
+          console.warn("User has no password set in database");
+          clearTimeout(loginTimeout);
+          setError("Account inactive: No password set. Contact admin.");
+          setLoading(false);
           return;
         }
       }
 
       // 2. If not in profiles, check pending
+      console.log("Checking pending_requests for:", sanitizedUser);
       const { data: pending, error: pendingErr } = await supabase
         .from('pending_requests')
         .select('*')
         .eq('username', sanitizedUser)
         .maybeSingle();
 
-      if (pendingErr) console.error("Pending fetch error:", pendingErr);
+      clearTimeout(loginTimeout);
+
+      if (pendingErr) {
+        console.error("Pending fetch error:", pendingErr);
+      }
 
       if (pending) {
+        console.log("User is pending approval");
         const hashedPendingPass = pending.password;
         let isMatch = false;
         try {
@@ -146,16 +183,20 @@ export default function Login() {
           }
           
           if (isMatch) {
-            setError("Your account is pending admin approval.");
+            setError("Your account is pending admin approval. Contact your unit lead.");
+            setLoading(false);
             return;
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error("Pending password check error:", e);
+        }
       }
       
-      setError("User not found or incorrect credentials.");
+      console.log("User not found in any table");
+      setError("Account not found. Please register first.");
     } catch (err: any) {
       console.error("Login fatal error:", err);
-      setError(err.message || "Connection error. Check database setup.");
+      setError("System currently unavailable. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -172,6 +213,7 @@ export default function Login() {
     setError('');
     
     try {
+      console.log("Registration attempt for:", regUser);
       const hashedPassword = await bcrypt.hash(regPass, 10);
       
       const { error: regErr } = await supabase
@@ -194,6 +236,7 @@ export default function Login() {
           setError(regErr.message || "Error submitting request. Check database permissions.");
         }
       } else {
+        console.log("Registration successful for:", regUser);
         setSuccess("Request Sent! Wait for admin approval.");
         setIsLogin(true);
       }

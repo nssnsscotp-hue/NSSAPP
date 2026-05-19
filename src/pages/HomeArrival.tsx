@@ -116,6 +116,10 @@ export default function HomeArrival() {
     setMsg(null);
     
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       // 1. Check if record exists first
       const { data: existing, error: fetchErr } = await supabase
         .from('home_arrival')
