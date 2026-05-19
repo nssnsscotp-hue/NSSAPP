@@ -53,13 +53,20 @@ export default function Resources() {
         setNeedsAuth(false);
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("DEBUG - Auth Error:", err);
+      // More detailed error messages
+      const errorMsg = err.message || JSON.stringify(err);
+      
       if (err.code === 'auth/popup-closed-by-user') {
-        setStatus({ type: 'error', msg: 'Login window was closed before completion. Please try again.' });
-      } else if (err.code === 'auth/access-denied' || err.message?.includes('403')) {
-        setStatus({ type: 'error', msg: 'Access Denied: This app is in testing mode. Your email must be added as a test user in Google Console.' });
+        setStatus({ type: 'error', msg: 'Login window was closed before completion.' });
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setStatus({ type: 'error', msg: `Domain Unauthorized: Add your GitHub Pages URL to Firebase Console > Auth > Settings > Authorized domains.` });
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setStatus({ type: 'error', msg: 'Google Sign-in is not enabled in Firebase Console.' });
+      } else if (err.code === 'auth/access-denied' || errorMsg.includes('403')) {
+        setStatus({ type: 'error', msg: 'Access Denied: You must be added as a test user in Google Cloud Console.' });
       } else {
-        setStatus({ type: 'error', msg: 'Connection failed. Please check your internet or try again later.' });
+        setStatus({ type: 'error', msg: `Error: ${errorMsg}` });
       }
     } finally {
       setIsLoggingIn(false);

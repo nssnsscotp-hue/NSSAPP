@@ -33,16 +33,20 @@ export const initAuth = (
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
+    console.log("DEBUG - Starting signInWithPopup...");
     const result = await signInWithPopup(auth, provider);
+    console.log("DEBUG - signInWithPopup success:", result.user.email);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
+      console.error("DEBUG - No access token in credential");
       throw new Error('Failed to get access token from Firebase Auth');
     }
 
     cachedAccessToken = credential.accessToken;
+    console.log("DEBUG - Access token acquired");
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
-    console.error('Sign in error:', error);
+    console.error('DEBUG - Sign in error:', error);
     throw error;
   } finally {
     isSigningIn = false;

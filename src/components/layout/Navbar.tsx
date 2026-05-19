@@ -105,31 +105,33 @@ export default function Navbar() {
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            className="md:hidden mt-4"
+            className="md:hidden mt-2"
           >
-            <div className="glass rounded-[2rem] p-4 shadow-2xl border border-white/50 space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setIsOpen(false)}
-                  className={cn(
-                    "flex items-center gap-4 p-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                    location.pathname === item.href 
-                      ? "bg-brand-600 text-white shadow-lg" 
-                      : "text-slate-600 hover:bg-brand-50"
-                  )}
-                >
-                  <item.icon size={20} />
-                  {item.name}
-                </Link>
-              ))}
-              <div className="border-t border-slate-100 mt-2 pt-2">
+            <div className="glass rounded-[2.5rem] p-3 shadow-2xl border border-white/50 overflow-hidden flex flex-col max-h-[calc(100vh-10rem)]">
+              <div className="overflow-y-auto p-1 space-y-1.5 custom-scrollbar">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
+                      location.pathname === item.href 
+                        ? "bg-brand-600 text-white shadow-xl shadow-brand-500/20" 
+                        : "text-slate-600 hover:bg-brand-50"
+                    )}
+                  >
+                    <item.icon size={18} />
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+              <div className="p-1 mt-1 border-t border-slate-100/50">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl text-xs font-black uppercase tracking-widest text-red-600 hover:bg-red-50"
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  <LogOut size={20} />
+                  <LogOut size={18} />
                   Logout Account
                 </button>
               </div>
