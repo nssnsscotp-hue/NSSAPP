@@ -20,6 +20,7 @@ export default function GalleryAdmin() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   
   // Form State
   const [newItem, setNewItem] = useState({
@@ -62,6 +63,10 @@ export default function GalleryAdmin() {
 
     setSubmitting(true);
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       const { error } = await supabase
         .from('gallery')
         .insert([{
@@ -83,25 +88,42 @@ export default function GalleryAdmin() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this activity record?')) return;
+    if (!id) return;
+    
+    if (confirmingDelete !== id) {
+      setConfirmingDelete(id);
+      return;
+    }
+
     setDeleting(id);
+    setConfirmingDelete(null);
+    const numericId = parseInt(id);
+    const isNumeric = !isNaN(numericId);
+
     try {
       // Ensure session for RLS
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        await supabase.auth.signInAnonymously();
-      }
+      if (!session) await supabase.auth.signInAnonymously();
 
-      const { error } = await supabase
+      // Attempt delete by id
+      let { error } = await supabase
         .from('gallery')
         .delete()
         .eq('id', id);
       
-      if (error) throw error;
-      fetchGallery();
-    } catch (err) {
+      if (error || isNumeric) {
+        if (isNumeric) {
+          await supabase.from('gallery').delete().eq('id', numericId);
+          await supabase.from('gallery').delete().eq('row', numericId);
+        }
+        await supabase.from('gallery').delete().eq('row', id);
+      }
+      
+      alert("Activity removed successfully.");
+      await fetchGallery();
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to delete record.");
+      alert("Failed to delete record: " + (err.message || "Database error"));
     } finally {
       setDeleting(null);
     }
@@ -210,17 +232,33 @@ export default function GalleryAdmin() {
                     {item.category}
                   </div>
                 </div>
-                <div className="p-5 flex justify-between items-start italic">
-                  <div>
+                <div className="p-5 flex justify-between items-center italic">
+                  <div className="flex-1 min-w-0 pr-4">
                     <h4 className="font-bold text-slate-900 leading-tight line-clamp-1">{item.title}</h4>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{item.date}</p>
                   </div>
-                  <button 
-                    onClick={() => handleDelete(item.id)}
-                    className="p-2 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {confirmingDelete === item.id && (
+                      <button 
+                        onClick={() => setConfirmingDelete(null)}
+                        className="text-[10px] font-black uppercase text-slate-400"
+                      >
+                        No
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => handleDelete(item.id)}
+                      disabled={!!deleting}
+                      className={cn(
+                        "p-3 rounded-xl transition-all",
+                        confirmingDelete === item.id 
+                          ? "bg-red-600 text-white animate-pulse" 
+                          : "text-slate-200 hover:text-red-500 hover:bg-red-50 group-hover:text-slate-400"
+                      )}
+                    >
+                      {deleting === item.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
             )) : (

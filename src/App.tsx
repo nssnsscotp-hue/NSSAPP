@@ -28,6 +28,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const hideNavbarOn = ['/login'];
   const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
+  const shouldHideAssistant = shouldHideNavbar || location.pathname.startsWith('/admin');
 
   return (
     <>
@@ -35,7 +36,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       <main>
         {children}
       </main>
-      {!shouldHideNavbar && <NSSAssistant />}
+      {!shouldHideAssistant && <NSSAssistant />}
     </>
   );
 }

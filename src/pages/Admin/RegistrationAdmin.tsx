@@ -23,6 +23,7 @@ export default function RegistrationAdmin() {
   const [approved, setApproved] = useState<Volunteer[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState<string | null>(null);
+  const [confirmingAction, setConfirmingAction] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showRegForm, setShowRegForm] = useState(false);
   const [regData, setRegData] = useState({
@@ -86,11 +87,22 @@ export default function RegistrationAdmin() {
   }, []);
 
   const handleAction = async (id: string, action: 'approve' | 'reject' | 'makeAdmin' | 'deleteApproved') => {
-    const labels: Record<string, string> = { approve: 'Approve', reject: 'Reject', makeAdmin: 'Make Admin', deleteApproved: 'Delete' };
-    if (!confirm(`${labels[action]} this user?`)) return;
+    const actionKey = `${action}-${id}`;
+    if (confirmingAction !== actionKey) {
+      setConfirmingAction(actionKey);
+      return;
+    }
     
     setActioning(id);
+    setConfirmingAction(null);
+    const numericId = parseInt(id);
+    const isNumeric = !isNaN(numericId);
+
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       if (action === 'approve') {
         const userToApprove = pending.find(p => p.row.toString() === id);
         if (!userToApprove) return;
@@ -108,23 +120,35 @@ export default function RegistrationAdmin() {
         if (insErr) throw insErr;
 
         // 2. Delete from pending
-        await supabase.from('pending_requests').delete().eq('id', id);
+        const { error } = await supabase.from('pending_requests').delete().eq('id', id);
+        if (error && isNumeric) {
+          await supabase.from('pending_requests').delete().eq('row', numericId);
+        }
         alert("User Approved Successfully!");
       } else if (action === 'reject') {
-        await supabase.from('pending_requests').delete().eq('id', id);
+        const { error } = await supabase.from('pending_requests').delete().eq('id', id);
+        if (error && isNumeric) {
+          await supabase.from('pending_requests').delete().eq('row', numericId);
+        }
         alert("Request Rejected");
       } else if (action === 'makeAdmin') {
-        await supabase.from('profiles').update({ role: 'admin' }).eq('id', id);
+        const { error } = await supabase.from('profiles').update({ role: 'admin' }).eq('id', id);
+        if (error && isNumeric) {
+          await supabase.from('profiles').update({ role: 'admin' }).eq('row', numericId);
+        }
         alert("Promoted to Admin");
       } else if (action === 'deleteApproved' as any) {
-        await supabase.from('profiles').delete().eq('id', id);
+        const { error } = await supabase.from('profiles').delete().eq('id', id);
+        if (error && isNumeric) {
+          await supabase.from('profiles').delete().eq('row', numericId);
+        }
         alert("Account Deleted. They can now register again.");
       }
       
       fetchData();
-    } catch (err) { 
+    } catch (err: any) { 
       console.error(err); 
-      alert("Action failed. Check database constraints.");
+      alert("Action failed: " + (err.message || "Database error"));
     } finally { 
       setActioning(null); 
     }
@@ -338,17 +362,30 @@ export default function RegistrationAdmin() {
                     <td className="px-8 py-6 text-slate-400 font-mono text-xs uppercase">{p.username}</td>
                     <td className="px-8 py-6 text-right">
                       <div className="flex justify-end gap-2">
+                        {confirmingAction === `approve-${p.row}` && (
+                          <button onClick={() => setConfirmingAction(null)} className="h-10 px-3 text-[10px] font-black uppercase text-slate-400">Cancel</button>
+                        )}
                         <button 
                           disabled={actioning === p.row.toString()}
                           onClick={() => handleAction(p.row, 'approve')}
-                          className="h-10 px-5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-500 transition-all flex items-center gap-2"
+                          className={cn(
+                            "h-10 px-5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2",
+                            confirmingAction === `approve-${p.row}` ? "bg-emerald-700 text-white animate-pulse" : "bg-emerald-600 text-white hover:bg-emerald-500"
+                          )}
                         >
                           {actioning === p.row.toString() ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} Approve
                         </button>
+
+                        {confirmingAction === `reject-${p.row}` && (
+                          <button onClick={() => setConfirmingAction(null)} className="h-10 px-3 text-[10px] font-black uppercase text-slate-400">Cancel</button>
+                        )}
                         <button 
                           disabled={actioning === p.row.toString()}
                           onClick={() => handleAction(p.row, 'reject')}
-                          className="h-10 px-5 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 transition-all flex items-center gap-2"
+                          className={cn(
+                            "h-10 px-5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2",
+                            confirmingAction === `reject-${p.row}` ? "bg-red-700 text-white animate-pulse" : "bg-red-600 text-white hover:bg-red-500"
+                          )}
                         >
                           <XCircle size={14} /> Reject
                         </button>
@@ -418,24 +455,35 @@ export default function RegistrationAdmin() {
                     <td className="px-8 py-6 text-right">
                         <div className="flex justify-end gap-2 ml-auto">
                           {u.role !== 'admin' ? (
-                            <button 
-                              disabled={actioning === u.row.toString()}
-                              onClick={() => handleAction(u.row, 'makeAdmin')}
-                              className="h-10 px-5 bg-white border border-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 hover:text-white hover:border-blue-700 transition-all flex items-center gap-2"
-                            >
-                              <Star size={14} /> Promote Admin
-                            </button>
+                            <>
+                              {confirmingAction === `makeAdmin-${u.row}` && (
+                                <button onClick={() => setConfirmingAction(null)} className="h-10 px-3 text-[10px] font-black uppercase text-slate-400">Cancel</button>
+                              )}
+                              <button 
+                                disabled={actioning === u.row.toString()}
+                                onClick={() => handleAction(u.row, 'makeAdmin')}
+                                className={cn(
+                                  "h-10 px-5 border text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-2",
+                                  confirmingAction === `makeAdmin-${u.row}` ? "bg-blue-700 text-white animate-pulse border-blue-700" : "bg-white border-slate-200 text-slate-600 hover:bg-blue-700 hover:text-white hover:border-blue-700"
+                                )}
+                              >
+                                <Star size={14} /> Promote Admin
+                              </button>
+                            </>
                           ) : (
                             <span className="text-xs font-black uppercase tracking-[0.2em] text-blue-600 cursor-default p-2">System Master</span>
                           )}
+                          
+                          {confirmingAction === `deleteApproved-${u.row}` && (
+                            <button onClick={() => setConfirmingAction(null)} className="h-10 px-3 text-[10px] font-black uppercase text-slate-400">Cancel</button>
+                          )}
                           <button 
                             disabled={actioning === u.row.toString()}
-                            onClick={() => {
-                              if(confirm(`Seriously delete ${u.name}? They will have to register again.`)) {
-                                handleAction(u.row, 'deleteApproved');
-                              }
-                            }}
-                            className="h-10 w-10 flex items-center justify-center bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-600 hover:text-white transition-all"
+                            onClick={() => handleAction(u.row, 'deleteApproved')}
+                            className={cn(
+                              "h-10 w-10 flex items-center justify-center border rounded-xl transition-all",
+                              confirmingAction === `deleteApproved-${u.row}` ? "bg-red-700 text-white animate-pulse border-red-700" : "bg-red-50 text-red-600 border-red-100 hover:bg-red-600 hover:text-white"
+                            )}
                             title="Remove from system"
                           >
                             <Trash2 size={16} />

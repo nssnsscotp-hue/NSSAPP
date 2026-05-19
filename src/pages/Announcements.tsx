@@ -45,10 +45,10 @@ export default function Announcements() {
       
       if (data) {
         setAnnouncements(data.map(a => ({
-          id: a.id,
-          title: a.title,
-          message: a.content,
-          date: new Date(a.created_at).toLocaleDateString()
+          id: (a.id || a.row || Math.random().toString()).toString(),
+          title: a.title || 'Untitled Notification',
+          message: a.content || a.message || '',
+          date: a.created_at ? new Date(a.created_at).toLocaleDateString() : 'Recent'
         })));
       }
     } catch (err) {

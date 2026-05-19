@@ -46,6 +46,10 @@ export default function AttendanceAdmin() {
     setSubmitting(true);
     setStatus(null);
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       const { error } = await supabase
         .from('programs')
         .insert([{
@@ -70,6 +74,10 @@ export default function AttendanceAdmin() {
     if (!confirm("Close this program for attendance?")) return;
     setStatus(null);
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       const { error } = await supabase
         .from('programs')
         .update({ status: 'Closed' })

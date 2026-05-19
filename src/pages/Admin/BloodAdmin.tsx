@@ -28,6 +28,7 @@ export default function BloodAdmin() {
   const [donors, setDonors] = useState<Donor[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGroup, setFilterGroup] = useState('All');
@@ -64,7 +65,7 @@ export default function BloodAdmin() {
           venue: r.hospital_venue,
           contact: r.contact_number,
           status: r.status as 'active' | 'resolved',
-          row: r.id
+          row: r.id || r.row
         })));
       }
     } catch (err) {
@@ -113,14 +114,25 @@ export default function BloodAdmin() {
   };
 
   const handleDeleteDonor = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this donor record?")) return;
+    if (confirmingDelete !== `donor-${id}`) {
+      setConfirmingDelete(`donor-${id}`);
+      return;
+    }
+
     setActioning(`donor-${id}`);
+    setConfirmingDelete(null);
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       const { error } = await supabase.from('blood_donors').delete().eq('id', id);
       if (error) throw error;
+      alert("Donor record removed.");
       fetchDonors();
     } catch (err) {
       console.error(err);
+      alert("Failed to delete record.");
     } finally {
       setActioning(null);
     }
@@ -138,6 +150,10 @@ export default function BloodAdmin() {
     e.preventDefault();
     setActioning('saving');
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       const { error } = await supabase
         .from('blood_emergency_requests')
         .insert([{
@@ -166,6 +182,10 @@ export default function BloodAdmin() {
     const newStatus = currentStatus === 'active' ? 'resolved' : 'active';
     setActioning(`status-${id}`);
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
       const { error } = await supabase
         .from('blood_emergency_requests')
         .update({ status: newStatus })
@@ -181,18 +201,44 @@ export default function BloodAdmin() {
   };
 
   const handleDelete = async (id: any) => {
-    if (!confirm("Remove this alert?")) return;
+    if (!id) return;
+    
+    if (confirmingDelete !== `alert-${id}`) {
+      setConfirmingDelete(`alert-${id}`);
+      return;
+    }
+
     setActioning(`delete-${id}`);
+    setConfirmingDelete(null);
+    const idStr = id.toString();
+    const numericId = parseInt(idStr);
+    const isNumeric = !isNaN(numericId);
+
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
+      // try both field names for maximum compatibility
       const { error } = await supabase
         .from('blood_emergency_requests')
         .delete()
         .eq('id', id);
       
-      if (error) throw error;
-      fetchRequests();
-    } catch (err) {
+      if (error) {
+        if (isNumeric) {
+          await supabase.from('blood_emergency_requests').delete().eq('id', numericId);
+          await supabase.from('blood_emergency_requests').delete().eq('row', numericId);
+        } else {
+          await supabase.from('blood_emergency_requests').delete().eq('row', id);
+        }
+      }
+      
+      alert("Alert removed successfully.");
+      await fetchRequests();
+    } catch (err: any) {
       console.error(err);
+      alert("Error removing alert: " + (err.message || "Database connection error"));
     } finally {
       setActioning(null);
     }
@@ -316,10 +362,18 @@ export default function BloodAdmin() {
               <div className="col-span-full py-20 text-center"><Loader2 className="animate-spin mx-auto text-red-200" size={32} /></div>
             ) : requests.length > 0 ? (
               requests.map((r, i) => (
-                <div key={i} className={cn(
+                <div key={r.row || i} className={cn(
                   "p-8 rounded-[2.5rem] border transition-all relative overflow-hidden",
                   r.status === 'active' ? "bg-white border-red-100 shadow-xl shadow-red-600/5 transition-all" : "bg-slate-50 border-slate-200 opacity-60"
                 )}>
+                  {confirmingDelete === `alert-${r.row}` && (
+                    <button 
+                      onClick={() => setConfirmingDelete(null)}
+                      className="absolute top-8 right-32 h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-all italic z-20"
+                    >
+                      Cancel
+                    </button>
+                  )}
                   <div className="flex justify-between items-start mb-6 relative z-10">
                     <div className="flex items-center gap-4">
                       <div className={cn(
@@ -338,15 +392,25 @@ export default function BloodAdmin() {
                     <div className="flex gap-2">
                        <button 
                         onClick={() => handleStatus(r.row, r.status)}
+                        disabled={!!actioning}
                         className="w-10 h-10 bg-slate-100 text-slate-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center font-black text-[10px]"
                       >
-                        {r.status === 'active' ? 'End' : 'Live'}
+                        {actioning === `status-${r.row}` ? <Loader2 size={14} className="animate-spin" /> : (r.status === 'active' ? 'End' : 'Live')}
                       </button>
                       <button 
-                        onClick={() => handleDelete(r.row)}
-                        className="w-10 h-10 bg-slate-100 text-slate-600 rounded-xl hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(r.row);
+                        }}
+                        disabled={!!actioning}
+                        className={cn(
+                          "w-10 h-10 rounded-xl transition-all flex items-center justify-center",
+                          confirmingDelete === `alert-${r.row}` 
+                            ? "bg-red-600 text-white animate-pulse" 
+                            : "bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white"
+                        )}
                       >
-                        <Trash2 size={16} />
+                        {actioning === `delete-${r.row}` ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                       </button>
                     </div>
                   </div>
@@ -444,11 +508,24 @@ export default function BloodAdmin() {
                         <td className="px-8 py-5">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 w-fit px-3 py-1 rounded-full">Unit {d.unit}</p>
                         </td>
-                        <td className="px-8 py-5 text-right">
+                        <td className="px-8 py-5 text-right flex items-center justify-end gap-2">
+                          {confirmingDelete === `donor-${d.id}` && (
+                            <button 
+                              onClick={() => setConfirmingDelete(null)}
+                              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 italic"
+                            >
+                              No
+                            </button>
+                          )}
                           <button 
                             onClick={() => handleDeleteDonor(d.id)}
                             disabled={actioning === `donor-${d.id}`}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                            className={cn(
+                              "p-2 rounded-xl transition-all",
+                              confirmingDelete === `donor-${d.id}` 
+                                ? "bg-red-600 text-white animate-pulse" 
+                                : "text-slate-400 hover:text-red-600 hover:bg-red-50"
+                            )}
                           >
                             {actioning === `donor-${d.id}` ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
                           </button>

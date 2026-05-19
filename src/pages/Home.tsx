@@ -32,11 +32,11 @@ export default function Home() {
         
         if (highlightsData) {
           setHighlights(highlightsData.map(h => ({
-            id: h.id,
-            event: h.event_name,
+            id: (h.id || h.row || Math.random().toString()).toString(),
+            event: h.event_name || h.event || 'Untitled',
             venue: h.venue || 'N/A',
-            date: new Date(h.event_date).toLocaleDateString(),
-            image: h.image_url || 'https://picsum.photos/seed/nss/800/600',
+            date: h.event_date || h.date || new Date().toLocaleDateString(),
+            image: h.image_url || h.image || 'https://picsum.photos/seed/nss/800/600',
             description: h.description || ''
           })));
         }
