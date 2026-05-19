@@ -18,8 +18,9 @@ export interface Highlight {
   id: string;
   event: string;
   date: string;
-  time: string;
   venue: string;
+  description: string;
+  image?: string;
 }
 
 export interface Complaint {

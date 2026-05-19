@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X, Send, Bot, Sparkles, User, Loader2 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
 
@@ -77,17 +76,7 @@ export default function NSSAssistant() {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: "user",
-            parts: [{ text }]
-          }
-        ],
-        config: {
-          systemInstruction: `You are the official NSS AI Assistant for NSS Units 36 & 94 of NSS College, Ottapalam.
+      const systemInstruction = `You are the official NSS AI Assistant for NSS Units 36 & 94 of NSS College, Ottapalam.
           Your goal is to help volunteers with information, event details, and general NSS guidelines.
           
           Context:
@@ -101,11 +90,20 @@ export default function NSSAssistant() {
           - Activities: Regular camping, blood donation, environmental protection, and social service.
           - Complaints: Guide users to the 'Complaints' section of the portal for serious issues.
           - Tone: Professional, helpful, empathetic, and patriotic.
-          - Keep responses concise and use formatting like bullet points where helpful.`
-        }
+          - Keep responses concise and use formatting like bullet points where helpful.`;
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, systemInstruction }),
       });
 
-      const aiResponse = response.text || "I'm sorry, I couldn't process that. Please try again or contact your Programme Officer.";
+      if (!response.ok) {
+        throw new Error("Failed to fetch from AI server");
+      }
+
+      const data = await response.json();
+      const aiResponse = data.text || "I'm sorry, I couldn't process that. Please try again or contact your Programme Officer.";
       setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
     } catch (error) {
       console.error("AI Error:", error);

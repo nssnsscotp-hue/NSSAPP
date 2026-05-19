@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Plus, Trash2, Loader2, Calendar, MapPin, Clock } from 'lucide-react';
 import { Highlight } from '@/src/pages/types';
 import { supabase } from '@/src/lib/supabase';
@@ -10,10 +10,11 @@ export default function HighlightsAdmin() {
   const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
-    event: '',
-    date: '',
-    time: '',
-    venue: ''
+    event_name: '',
+    event_date: '',
+    venue: '',
+    description: '',
+    image_url: 'https://picsum.photos/seed/nss/800/600'
   });
 
   const fetchHighlights = async () => {
@@ -27,10 +28,11 @@ export default function HighlightsAdmin() {
       if (data) {
         setHighlights(data.map(h => ({
           id: h.id,
-          event: h.event,
-          date: h.date,
-          time: h.time,
-          venue: h.venue
+          event: h.event_name,
+          date: h.event_date,
+          venue: h.venue || '',
+          description: h.description || '',
+          image: h.image_url
         })));
       }
     } catch (err) {
@@ -48,33 +50,72 @@ export default function HighlightsAdmin() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      console.log("Attempting to publish highlight...");
+
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+      
       const { error } = await supabase
         .from('highlights')
-        .insert([formData]);
+        .insert([{
+          event_name: formData.event_name,
+          event_date: formData.event_date,
+          venue: formData.venue,
+          description: formData.description,
+          image_url: formData.image_url
+        }]);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Error:", error);
+        throw error;
+      }
 
-      setFormData({ event: '', date: '', time: '', venue: '' });
+      alert("Highlight published successfully!");
+      setFormData({ 
+        event_name: '', 
+        event_date: '', 
+        venue: '',
+        description: '',
+        image_url: 'https://picsum.photos/seed/nss/800/600'
+      });
       fetchHighlights();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert("Error publishing highlight: " + (err.message || "Database error"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
+    console.log("handleDelete triggered for id:", id);
     if (!confirm("Delete this highlight?")) return;
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("No session found, signing in anonymously for delete...");
+        await supabase.auth.signInAnonymously();
+      }
+
       const { error } = await supabase
         .from('highlights')
         .delete()
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Delete Error:", error);
+        throw error;
+      }
+      
+      alert("Highlight deleted successfully.");
       fetchHighlights();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert("Error deleting highlight: " + (err.message || "Database error"));
     }
   };
 
@@ -98,25 +139,23 @@ export default function HighlightsAdmin() {
             <form onSubmit={handleAdd} className="space-y-4">
               <input 
                 type="text" required placeholder="Event Name" 
-                value={formData.event} onChange={e => setFormData({...formData, event: e.target.value})}
+                value={formData.event_name} onChange={e => setFormData({...formData, event_name: e.target.value})}
                 className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium" 
               />
-              <div className="grid grid-cols-2 gap-3">
-                <input 
-                  type="date" required 
-                  value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}
-                  className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium" 
-                />
-                <input 
-                  type="time" required 
-                  value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})}
-                  className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium" 
-                />
-              </div>
+              <input 
+                type="date" required 
+                value={formData.event_date} onChange={e => setFormData({...formData, event_date: e.target.value})}
+                className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium" 
+              />
               <input 
                 type="text" required placeholder="Venue" 
                 value={formData.venue} onChange={e => setFormData({...formData, venue: e.target.value})}
                 className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium" 
+              />
+              <textarea 
+                placeholder="Description" 
+                value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                className="w-full h-24 bg-slate-50 border border-slate-100 rounded-xl p-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm font-medium resize-none" 
               />
               <button
                 disabled={submitting}
@@ -148,12 +187,10 @@ export default function HighlightsAdmin() {
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-900 text-sm leading-tight">{h.event}</h4>
+                        <p className="text-slate-500 text-[10px] mt-0.5 line-clamp-1">{h.description}</p>
                         <div className="flex gap-4 mt-1">
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
                             <Calendar size={10} /> {h.date}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                            <Clock size={10} /> {h.time}
                           </span>
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
                             <MapPin size={10} /> {h.venue}
@@ -162,10 +199,11 @@ export default function HighlightsAdmin() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => h.id && handleDelete(h.id)}
-                      className="p-2 text-slate-300 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                      onClick={() => handleDelete(h.id)}
+                      className="p-3 text-slate-400 hover:text-red-500 hover:bg-white rounded-xl transition-all border border-slate-100 md:border-transparent md:hover:border-slate-100 shadow-sm md:opacity-100"
+                      title="Delete Highlight"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 ))}

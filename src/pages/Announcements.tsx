@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Calendar, RefreshCcw, Loader2, Info, CheckCircle2, UserPlus } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
 import { Announcement } from '@/src/pages/types';
@@ -29,6 +29,13 @@ export default function Announcements() {
   const fetchAnnouncements = async () => {
     try {
       setRefreshing(true);
+      
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+
       const { data, error } = await supabase
         .from('announcements')
         .select('*')

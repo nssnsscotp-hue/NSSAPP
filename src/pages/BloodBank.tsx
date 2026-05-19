@@ -58,6 +58,12 @@ export default function BloodBank() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+
       const { error } = await supabase
         .from('blood_donors')
         .insert([{

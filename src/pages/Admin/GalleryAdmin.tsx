@@ -86,6 +86,12 @@ export default function GalleryAdmin() {
     if (!confirm('Are you sure you want to delete this activity record?')) return;
     setDeleting(id);
     try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+
       const { error } = await supabase
         .from('gallery')
         .delete()
@@ -209,7 +215,10 @@ export default function GalleryAdmin() {
                     <h4 className="font-bold text-slate-900 leading-tight line-clamp-1">{item.title}</h4>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{item.date}</p>
                   </div>
-                  <button className="p-2 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                  <button 
+                    onClick={() => handleDelete(item.id)}
+                    className="p-2 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>

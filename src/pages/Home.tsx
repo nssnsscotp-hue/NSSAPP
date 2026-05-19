@@ -17,11 +17,17 @@ export default function Home() {
     const fetchHomeData = async () => {
       setLoading(true);
       try {
+        // Ensure session for RLS
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          await supabase.auth.signInAnonymously();
+        }
+
         // 1. Fetch Highlights
         const { data: highlightsData } = await supabase
           .from('highlights')
           .select('*')
-          .order('event_date', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(10);
         
         if (highlightsData) {
@@ -30,7 +36,8 @@ export default function Home() {
             event: h.event_name,
             venue: h.venue || 'N/A',
             date: new Date(h.event_date).toLocaleDateString(),
-            image: h.image_url || 'https://picsum.photos/seed/nss/800/600'
+            image: h.image_url || 'https://picsum.photos/seed/nss/800/600',
+            description: h.description || ''
           })));
         }
 

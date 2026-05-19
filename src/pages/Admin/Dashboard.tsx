@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   Users, Bell, ShieldAlert, Heart, Trophy, BarChart3, Home,
   Plus, Settings, CheckCircle, XCircle, Loader2, Calendar, FolderOpen,
