@@ -64,15 +64,18 @@ export default function BloodBank() {
           full_name: formData.name,
           blood_group: formData.bloodGroup,
           mobile: formData.contact,
-          unit: localStorage.getItem('unit') || 'Unknown'
+          unit: formData.department || localStorage.getItem('unit') || 'Unknown'
         }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Donor Registration Error:", error);
+        throw new Error(error.message);
+      }
       
       alert("Donor Registered Successfully! Your data is protected and visible only to admins.");
       setFormData({ name: '', department: '', class: '', contact: '', bloodGroup: '' });
-    } catch (err) {
-      alert("Error adding donor");
+    } catch (err: any) {
+      alert(`Registration Failed: ${err.message || 'Database connection error'}`);
     } finally {
       setSubmitting(false);
     }
