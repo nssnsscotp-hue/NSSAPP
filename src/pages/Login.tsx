@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, Loader2, LogIn, Shield, School, UserPlus } from 'lucide-react';
@@ -13,6 +13,17 @@ export default function Login() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (localStorage.getItem("isLoggedIn") === "true") {
+      const role = localStorage.getItem("role");
+      if (role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+    }
+  }, [navigate]);
 
   // Login form state
   const [loginUser, setLoginUser] = useState('');
@@ -64,24 +75,25 @@ export default function Login() {
       localStorage.setItem("userId", "00000000-0000-0000-0000-000000000002");
       localStorage.setItem("role", "admin");
       localStorage.setItem("name", "Master Admin (Recovery)");
+      setLoading(false);
       navigate('/admin');
       return;
     }
     
+    let loginFinished = false;
+    
+    // Add a robust timeout to the login process to prevent infinite buffering
+    const loginTimeout = setTimeout(() => {
+      if (!loginFinished) {
+        console.warn("Login timed out after 10s");
+        setError("Connection timeout. The database is taking too long to respond. Please try again.");
+        setLoading(false);
+      }
+    }, 10000);
+    
     try {
       console.log("Starting login process for:", sanitizedUser);
-      setLoading(true);
-      setError('');
       
-      // Add a timeout to the entire login process
-      const loginTimeout = setTimeout(() => {
-        if (loading) {
-          console.warn("Login timed out after 15s");
-          setError("Connection timeout. Please check your internet or try again.");
-          setLoading(false);
-        }
-      }, 15000);
-
       // 1. Check if user is in profiles (Approved)
       console.log("Fetching profile from Supabase...");
       const { data: profile, error: profileErr } = await supabase
@@ -92,6 +104,7 @@ export default function Login() {
 
       if (profileErr) {
         console.error("Supabase profile fetch error:", profileErr);
+        loginFinished = true;
         clearTimeout(loginTimeout);
         setError(`Database unreachable: ${profileErr.message}`);
         setLoading(false);
@@ -118,6 +131,7 @@ export default function Login() {
             console.log("Password match result:", isMatch);
 
             if (isMatch) {
+              loginFinished = true;
               clearTimeout(loginTimeout);
               console.log("Success! Setting session and navigating...");
               
@@ -136,6 +150,7 @@ export default function Login() {
               }, 100);
               return;
             } else {
+              loginFinished = true;
               clearTimeout(loginTimeout);
               setError("Incorrect password. Please check and try again.");
               setLoading(false);
@@ -143,6 +158,7 @@ export default function Login() {
             }
           } catch (bcryptErr) {
             console.error("Password verification error:", bcryptErr);
+            loginFinished = true;
             clearTimeout(loginTimeout);
             setError("Password check failed. Try again.");
             setLoading(false);
@@ -150,6 +166,7 @@ export default function Login() {
           }
         } else {
           console.warn("User has no password set in database");
+          loginFinished = true;
           clearTimeout(loginTimeout);
           setError("Account inactive: No password set. Contact admin.");
           setLoading(false);
@@ -165,6 +182,7 @@ export default function Login() {
         .eq('username', sanitizedUser)
         .maybeSingle();
 
+      loginFinished = true;
       clearTimeout(loginTimeout);
 
       if (pendingErr) {
@@ -198,6 +216,8 @@ export default function Login() {
       console.error("Login fatal error:", err);
       setError("System currently unavailable. Please try again later.");
     } finally {
+      loginFinished = true;
+      clearTimeout(loginTimeout);
       setLoading(false);
     }
   };
