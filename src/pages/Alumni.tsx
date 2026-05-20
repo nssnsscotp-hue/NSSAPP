@@ -24,7 +24,7 @@ export default function AlumniNetwork() {
         setAlumni(data.map(a => ({
           name: a.full_name,
           batch: a.batch,
-          occupation: a.role,
+          occupation: a.legacy_role,
           location: 'Ottapalam',
           contact: 'Mentorship Available',
           expertise: 'NSS Guidance',

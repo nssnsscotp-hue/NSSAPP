@@ -45,6 +45,7 @@ export default function Navbar() {
     { name: 'Attendance', href: '/attendance', icon: Calendar },
     { name: 'Safety Status', href: '/home-arrival', icon: Home },
     { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
+    { name: 'Quiz Hub', href: '/quiz', icon: HelpCircle },
     { name: 'My ID', href: '/id-card', icon: Contact },
     { name: 'Announcements', href: '/announcements', icon: Bell },
     { name: 'Resources', href: '/resources', icon: Library },
@@ -65,7 +66,7 @@ export default function Navbar() {
         <div className="glass shadow-2xl shadow-slate-200/40 rounded-[2rem] px-4 md:px-8 h-20 md:h-24 flex items-center justify-between border border-white/50">
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex-shrink-0 flex items-center gap-4 group">
-              <div className="flex items-center -space-x-3 transition-transform group-hover:scale-105 duration-500">
+              <div className="flex items-center space-x-2.5 transition-transform group-hover:scale-105 duration-500">
                 <div className="w-12 h-12 md:w-14 md:h-14 bg-white rounded-2xl flex items-center justify-center shadow-2xl border-2 border-white p-1.5 z-20">
                   <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="College Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
@@ -73,9 +74,13 @@ export default function Navbar() {
                   <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" alt="NSS Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
               </div>
-              <div className="hidden lg:block">
-                <h1 className="text-xl md:text-2xl font-black tracking-tighter leading-none italic uppercase text-slate-900">NSS <span className="text-brand-600">COLLEGE</span></h1>
-                <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.4em] mt-1 ml-0.5 opacity-60">Units 36 & 94 | Ottapalam</p>
+              <div className="flex flex-col justify-center items-center text-center select-none">
+                <h1 className="text-sm sm:text-base md:text-xl lg:text-2xl font-black tracking-tighter leading-none italic uppercase text-slate-900">
+                  NSS <span className="text-brand-600">COLLEGE</span> <span className="text-slate-400/80">OTTAPALAM</span>
+                </h1>
+                <p className="text-slate-400 text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] md:tracking-[0.35em] mt-1 opacity-60">
+                  NSS UNITS 36 & 94
+                </p>
               </div>
             </Link>
           </div>

@@ -21,6 +21,7 @@ export default function AlumniAdmin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -37,6 +38,11 @@ export default function AlumniAdmin() {
   const fetchAlumni = async () => {
     try {
       setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+
       const { data, error } = await supabase
         .from('alumni')
         .select('*')
@@ -50,12 +56,13 @@ export default function AlumniAdmin() {
           batch: a.batch,
           phone: a.mobile, // Mapping mobile to phone for local UI
           email: a.email,
-          role: a.role,
+          role: a.legacy_role,
           row: a.id
         })));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch alumni", err);
+      setStatus({ type: 'error', msg: "Fetch Error: " + (err.message || "Failed to load alumni database.") });
     } finally {
       setLoading(false);
     }
@@ -64,13 +71,19 @@ export default function AlumniAdmin() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setActioning('saving');
+    setStatus(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+
       const payload = {
         full_name: formData.name,
         batch: formData.batch,
         mobile: formData.phone,
         email: formData.email,
-        role: formData.role
+        legacy_role: formData.role
       };
       
       if (editingId !== null) {
@@ -79,47 +92,57 @@ export default function AlumniAdmin() {
           .update(payload)
           .eq('id', editingId);
         if (error) throw error;
-        alert("Record Updated");
+        setStatus({ type: 'success', msg: `Successfully updated the alumni profile of ${formData.name}!` });
       } else {
         const { error } = await supabase
           .from('alumni')
           .insert([payload]);
         if (error) throw error;
-        alert("Enrollment Confirmed");
+        setStatus({ type: 'success', msg: `Successfully enrolled ${formData.name} to the alumni network!` });
       }
 
       setIsAdding(false);
       setEditingId(null);
       setFormData({ name: '', batch: '', phone: '', email: '', role: '' });
-      fetchAlumni();
-    } catch (err) {
-      console.error(err);
-      alert("Action failed");
+      await fetchAlumni();
+    } catch (err: any) {
+      console.error("Action error in alumni admin:", err);
+      setStatus({ 
+        type: 'error', 
+        msg: "Failed to enroll alumni: " + (err.message || "Database permission denied or columns constraint violated. Please check if your Supabase 'alumni' table permits anonymous inserts under Row Level Security policies.") 
+      });
     } finally {
       setActioning(null);
     }
   };
 
-  const handleDelete = async (id: any) => {
-    if (!confirm("Are you sure you want to remove this record?")) return;
+  const handleDelete = async (id: any, name: string) => {
+    setStatus(null);
     setActioning(`delete-${id}`);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.signInAnonymously();
+      }
+
       const { error } = await supabase
         .from('alumni')
         .delete()
         .eq('id', id);
       
       if (error) throw error;
-      alert("Removed");
-      fetchAlumni();
-    } catch (err) {
-      console.error(err);
+      setStatus({ type: 'success', msg: `Removed ${name} from the alumni database.` });
+      await fetchAlumni();
+    } catch (err: any) {
+      console.error("Delete error in alumni admin:", err);
+      setStatus({ type: 'error', msg: "Delete failed: " + (err.message || "Database restricted deletion") });
     } finally {
       setActioning(null);
     }
   };
 
   const startEdit = (a: Alumnus) => {
+    setStatus(null);
     setEditingId(a.row);
     setFormData({
       name: a.name,
@@ -146,7 +169,7 @@ export default function AlumniAdmin() {
         
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <button 
-            onClick={() => { setIsAdding(!isAdding); if (!isAdding) setEditingId(null); }}
+            onClick={() => { setIsAdding(!isAdding); if (!isAdding) setEditingId(null); setStatus(null); }}
             className="w-full md:w-auto h-12 px-6 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
           >
             {isAdding ? <X size={18} /> : <Plus size={18} />}
@@ -165,6 +188,29 @@ export default function AlumniAdmin() {
           </div>
         </div>
       </header>
+
+      {status && (
+        <div className={cn(
+          "p-5 rounded-2xl flex items-center justify-between text-xs font-bold uppercase tracking-wider shadow-sm transition-all border",
+          status.type === 'success' 
+            ? "bg-emerald-50 text-emerald-800 border-emerald-100" 
+            : "bg-red-50 text-red-800 border-red-100"
+        )}>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "w-2 h-2 rounded-full",
+              status.type === 'success' ? "bg-emerald-500" : "bg-red-500"
+            )} />
+            <span>{status.msg}</span>
+          </div>
+          <button 
+            onClick={() => setStatus(null)} 
+            className="w-8 h-8 rounded-full hover:bg-black/5 flex items-center justify-center transition-colors text-slate-400 hover:text-slate-700 ml-4 shrink-0"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <AnimatePresence>
         {isAdding && (
@@ -280,7 +326,7 @@ export default function AlumniAdmin() {
                         </button>
                         <button 
                           disabled={actioning === `delete-${a.row}`}
-                          onClick={() => handleDelete(a.row)}
+                          onClick={() => handleDelete(a.row, a.name)}
                           className="w-10 h-10 bg-slate-100 text-slate-600 rounded-xl hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
                           title="Delete"
                         >
