@@ -22,13 +22,15 @@ import Resources from './pages/Resources';
 import HomeArrival from './pages/HomeArrival';
 import AlumniNetwork from './pages/Alumni';
 import NSSAssistant from './components/Assistant/NSSAssistant';
+import Profile from './pages/Profile';
+import HODDashboard from './pages/HOD/HODDashboard';
 
 // Layout wrapper to conditionally show navbar
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const hideNavbarOn = ['/login'];
-  const shouldHideNavbar = hideNavbarOn.includes(location.pathname);
-  const shouldHideAssistant = shouldHideNavbar || location.pathname.startsWith('/admin');
+  const hideNavbarOn = ['/login', '/hod'];
+  const shouldHideNavbar = hideNavbarOn.includes(location.pathname) || location.pathname.startsWith('/hod') || location.pathname.startsWith('/admin');
+  const shouldHideAssistant = shouldHideNavbar;
 
   return (
     <>
@@ -48,14 +50,16 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           
+          {/* Publicly Accessible Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/announcements" element={<Announcements />} />
+          <Route path="/gallery" element={<Gallery />} />
+          
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Home />} />
-            {/* User Routes */}
-            <Route path="/announcements" element={<Announcements />} />
+            {/* Protected Volunteer Routes */}
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/sos" element={<SOS />} />
             <Route path="/bloodbank" element={<BloodBank />} />
-            <Route path="/gallery" element={<Gallery />} />
             <Route path="/help" element={<Help />} />
             <Route path="/complaints" element={<Complaints />} />
             <Route path="/quiz" element={<QuizSystem />} />
@@ -63,6 +67,7 @@ export default function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/id-card" element={<VolunteerID />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/performance" element={<PerformanceDashboard />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/home-arrival" element={<HomeArrival />} />
@@ -71,6 +76,10 @@ export default function App() {
 
           <Route element={<ProtectedRoute role="admin" />}>
             <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
+
+          <Route element={<ProtectedRoute role="hod" />}>
+            <Route path="/hod" element={<HODDashboard />} />
           </Route>
 
           {/* Catch-all route to handle 404s/mismatches */}

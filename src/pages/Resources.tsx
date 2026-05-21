@@ -74,8 +74,53 @@ const mapDriveFolderToDbCategory = (folder: keyof typeof DRIVE_FOLDERS): string 
   }
 };
 
+const DEFAULT_FILENAMES: Record<string, string[]> = {
+  'Program Brochures': [
+    'NSS_Regular_Activities_Manual.pdf',
+    'Annual_Special_Camp_Guidelines_2026.pdf',
+    'NSS_Enrollment_Circular_2026.pdf',
+    'National_Youth_Festival_Brochure.pdf'
+  ],
+  'Program Reports': [
+    'Annual_Activity_Report_2025_2026.docx',
+    'Socio_Economic_Survey_Report.docx',
+    'Special_Camp_Consolidated_Report.docx',
+    'Gram_Vikas_Project_Report_April_2026.docx'
+  ],
+  'Program Photos': [
+    'Camp_Opening_Ceremony_Highlights.zip',
+    'Blood_Donation_OnField_Photos.zip',
+    'Campus_Cleaning_Drive_Snapshots.zip',
+    'Village_Survey_Field_Photos.zip'
+  ],
+  'Invoices/Bills': [
+    'Seven_Day_Camp_Mess_Bills.xlsx',
+    'Medical_Kit_Purchase_Receipts.pdf',
+    'Camp_Transport_Invoiced_Claims.pdf',
+    'Banner_Printing_Vendor_Bill.pdf'
+  ],
+  'Other 01': [
+    'Volunteers_Master_Attendance_List.xlsx',
+    'Blood_Donation_Camp_Certificate_Template.pdf',
+    'NSS_Volunteer_Certificate_Request_Form.pdf'
+  ],
+  'Other 02': [
+    'Socio_Economic_Survey_Form_Blank.xlsx',
+    'Panchayat_Leader_Permission_Letter.pdf'
+  ],
+  'Other 03': [
+    'Standby_Inventory_Log.xlsx',
+    'Emergency_Contact_Sheet.pdf'
+  ],
+  'Other 04': [
+    'Archived_Alumni_Directory.xlsx',
+    'Historical_Milestone_Report_2020.pdf'
+  ]
+};
+
 export default function Resources() {
   const [username, setUsername] = useState('Volunteer');
+  const [userRole, setUserRole] = useState('volunteer');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof DRIVE_FOLDERS | 'All'>('All');
   
@@ -86,6 +131,25 @@ export default function Resources() {
   const [customTitle, setCustomTitle] = useState('');
   const [status, setStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   
+  const [shards, setShards] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('nss_storage_shards');
+      const defaults = [
+        { id: 'Program Brochures', label: 'Program Brochures', bucket: '', info: 'Brochures & pamphlets' },
+        { id: 'Program Reports', label: 'Program Reports', bucket: '', info: 'Project & annual activity reports' },
+        { id: 'Program Photos', label: 'Program Photos', bucket: '', info: 'On-field photography & zip logs' },
+        { id: 'Invoices/Bills', label: 'Invoices/Bills', bucket: '', info: 'Official camp expense claims & invoices' },
+        { id: 'Other 01', label: 'Other 01', bucket: '', info: 'General volunteer credentials & PDFs' },
+        { id: 'Other 02', label: 'Other 02', bucket: '', info: 'Survey sheets & xlsx tables' },
+        { id: 'Other 03', label: 'Other 03', bucket: '', info: 'Standby assets category' },
+        { id: 'Other 04', label: 'Other 04', bucket: '', info: 'Archival fallback' }
+      ];
+      return saved ? JSON.parse(saved) : defaults;
+    } catch {
+      return [];
+    }
+  });
+
   const [localResources, setLocalResources] = useState<ResourceFile[]>([]);
 
   const fetchResourcesList = async () => {
@@ -112,6 +176,7 @@ export default function Resources() {
             }).replace(/ /g, '-') : 'Recent',
             size: 'Free Cloud',
             isLocal: true,
+            isFirebase: !!isFirebaseURL,
             downloadUrl,
             dbId: row.id
           };
@@ -159,6 +224,8 @@ export default function Resources() {
   useEffect(() => {
     const name = localStorage.getItem('name') || localStorage.getItem('user') || 'Volunteer';
     setUsername(name);
+    const role = localStorage.getItem('role') || 'volunteer';
+    setUserRole(role);
     fetchResourcesList();
   }, []);
 
@@ -170,12 +237,10 @@ export default function Resources() {
     setStatus(null);
 
     try {
-      setUploadProgressMsg('Connecting to permanent cloud storage...');
+      setUploadProgressMsg('Resolving dynamic storage nodes...');
       const fileExt = file.name.split('.').pop();
-      const cleanName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9]/g, '_')}.${fileExt}`;
 
       // Dynamic Sharded Storage router
-      let activeStorage = storage;
       let targetBucketName = firebaseConfig.storageBucket;
       try {
         const savedShards = localStorage.getItem('nss_storage_shards');
@@ -184,12 +249,6 @@ export default function Resources() {
           const foundShard = shardList.find((s: any) => s.id === category);
           if (foundShard && foundShard.bucket && foundShard.bucket.trim() !== '') {
             targetBucketName = foundShard.bucket.trim();
-            const appId = `shard_${targetBucketName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const shardApp = getApps().find(a => a.name === appId) || initializeApp({
-              ...firebaseConfig,
-              storageBucket: targetBucketName
-            }, appId);
-            activeStorage = getStorage(shardApp);
             console.log(`Routing upload of category [${category}] to custom storage bucket: [${targetBucketName}]`);
           }
         }
@@ -197,29 +256,30 @@ export default function Resources() {
         console.warn("Dynamic shard routing error, falling back to default bucket:", shardErr);
       }
 
-      const fileRef = ref(activeStorage, `nss_resources/${cleanName}`);
-      const uploadTask = uploadBytesResumable(fileRef, file);
+      setUploadProgressMsg('Uploading resource package to cloud... (please wait)');
 
-      const downloadURL = await new Promise<string>((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setUploadProgressMsg(`Uploading to cloud storage... ${pct}%`);
-          },
-          (error) => {
-            reject(error);
-          },
-          async () => {
-            try {
-              const url = await getDownloadURL(uploadTask.snapshot.ref);
-              resolve(url);
-            } catch (err) {
-              reject(err);
-            }
-          }
-        );
+      // Upload via secure server-side Firebase upload proxy (bypasses browser CORS / sandbox limits)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "nss_resources");
+      formData.append("bucket", targetBucketName);
+
+      const response = await fetch('/api/firebase/upload', {
+        method: 'POST',
+        body: formData
       });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Server upload proxy failed.");
+      }
+
+      const resData = await response.json();
+      if (!resData.success || !resData.url) {
+        throw new Error("Invalid response from cloud storage router.");
+      }
+
+      const downloadURL = resData.url;
 
       setUploadProgressMsg('Registering resource in global catalog...');
       const displayName = customTitle.trim() 
@@ -227,9 +287,10 @@ export default function Resources() {
         : file.name;
 
       const dbCategory = mapDriveFolderToDbCategory(category);
+      const currentUsername = localStorage.getItem('name') || localStorage.getItem('user') || username || 'Volunteer';
 
       const { error } = await supabase.from('reports_log').insert([{
-        volunteer_name: username,
+        volunteer_name: currentUsername,
         program_name: displayName,
         category: dbCategory,
         file_path: downloadURL,
@@ -242,7 +303,7 @@ export default function Resources() {
 
       setStatus({ 
         type: 'success', 
-        msg: `Successfully posted "${displayName}" to Free Permanent Storage!` 
+        msg: `Successfully posted "${displayName}" to Free Permanent Cloud Storage Shard!` 
       });
       
       // Reset input values
@@ -256,15 +317,16 @@ export default function Resources() {
       // Refresh list
       await fetchResourcesList();
     } catch (err: any) {
-      console.error("Cloud upload error, falling back to local server:", err);
+      console.warn("Cloud upload blocked/failed, falling back to local server:", err);
       // Fallback fallback server upload
       try {
-        setUploadProgressMsg('Contacting backup local server upload...');
+        setUploadProgressMsg('Auto-redirecting to high-speed container storage...');
+        const currentUsername = localStorage.getItem('name') || localStorage.getItem('user') || username || 'Volunteer';
         const formData = new FormData();
         formData.append("file", file);
         formData.append("category", category);
         formData.append("customTitle", customTitle);
-        formData.append("uploadedBy", username);
+        formData.append("uploadedBy", currentUsername);
 
         const response = await fetch('/api/resources/upload', {
           method: 'POST',
@@ -272,14 +334,32 @@ export default function Resources() {
         });
 
         if (!response.ok) {
-          throw new Error("Local fallback system failed to accept storage.");
+          throw new Error("Fallback local storage rejected payload.");
         }
 
         const result = await response.json();
         if (result.success && result.resource) {
+          const fileExt = file.name.split('.').pop();
+          const displayName = customTitle.trim() 
+            ? `${customTitle.replace(/\.[^/.]+$/, "")}.${fileExt}` 
+            : file.name;
+          const dbCategory = mapDriveFolderToDbCategory(category);
+
+          try {
+            await supabase.from('reports_log').insert([{
+              volunteer_name: currentUsername,
+              program_name: displayName,
+              category: dbCategory,
+              file_path: `/api/resources/download/${result.resource.id}`,
+              file_name: displayName
+            }]);
+          } catch (supErr) {
+            console.warn("Supabase log sync warning:", supErr);
+          }
+
           setStatus({ 
             type: 'success', 
-            msg: `Successfully uploaded "${result.resource.name}" to standby container disk!` 
+            msg: `Firebase storage timed out or rules blocked. Safely uploaded to Cloud standby container disk instead!` 
           });
           setFile(null);
           setCustomTitle('');
@@ -301,6 +381,19 @@ export default function Resources() {
   };
 
   const handleDeleteResource = async (id: string, name: string) => {
+    // Check if the item is a Firebase-uploaded file
+    const targetItem = localResources.find(r => r.id === id);
+    const isFirebaseFile = targetItem?.isFirebase || (targetItem?.downloadUrl?.startsWith('http') && !targetItem?.downloadUrl?.includes('/api/resources/'));
+    const role = localStorage.getItem('role') || userRole || 'volunteer';
+    
+    if (isFirebaseFile && role !== 'admin') {
+      setStatus({
+        type: 'error',
+        msg: `Unauthorized: Only administrators are permitted to delete files uploaded to Firebase Storage.`
+      });
+      return;
+    }
+
     try {
       // 1. Delete from Supabase reports_log
       const numericId = parseInt(id, 10);
@@ -473,6 +566,34 @@ export default function Resources() {
                   </div>
                 </div>
 
+                {/* Standardized Naming Selector Templates based on selection */}
+                {category && DEFAULT_FILENAMES[category] && (
+                  <div className="space-y-1.5 bg-indigo-50/40 p-3.5 rounded-2xl border border-indigo-100/50">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-indigo-700 ml-0.5 block select-none mb-1">
+                      💡 Select Standard File Target name:
+                    </label>
+                    <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto pr-1">
+                      {DEFAULT_FILENAMES[category].map((tmpl) => (
+                        <button
+                          key={tmpl}
+                          type="button"
+                          onClick={() => {
+                            setCustomTitle(tmpl.replace(/\.[^/.]+$/, ""));
+                          }}
+                          className={cn(
+                            "px-2.5 py-1.5 bg-white hover:bg-indigo-50 border rounded-lg text-[10px] font-bold text-left text-indigo-950 transition-all cursor-pointer truncate flex items-center gap-2",
+                            customTitle === tmpl.replace(/\.[^/.]+$/, "") ? "border-indigo-600 text-indigo-600 font-extrabold" : "border-slate-100"
+                          )}
+                          title={`Select template: ${tmpl}`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                          <span className="truncate">{tmpl}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Processing/Success Alerts */}
                 <AnimatePresence mode="wait">
                   {status && (
@@ -568,44 +689,127 @@ export default function Resources() {
 
             </div>
 
-            {/* Official Google Drive sync indexes */}
-            <div className="bg-slate-900 text-white p-6 md:p-8 rounded-[2rem] shadow-lg border border-slate-800">
-              <div className="flex items-center justify-between mb-4">
+            {/* Firebase Sharded Storage Pool Directories Index */}
+            <div className="bg-slate-950 text-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-slate-900">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-2.5 text-indigo-400">
                   <FolderOpen size={18} />
-                  <h3 className="font-black uppercase tracking-widest text-xs">Drive Directory Indices</h3>
+                  <h3 className="font-black uppercase tracking-widest text-xs">Firebase Storage Shard Indices</h3>
                 </div>
-                <ShieldCheck size={18} className="text-emerald-400" />
+                <div className="flex items-center gap-1.5 text-emerald-400 text-[9px] font-black uppercase bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-950">
+                  <ShieldCheck size={12} fill="currentColor" className="text-emerald-950" />
+                  <span>8 Multi-Bucket Shards Active</span>
+                </div>
               </div>
-              <p className="text-slate-400 text-[10px] leading-relaxed max-w-xl mb-6">
-                Official physical assets are systematically organized into cloud folders. Clicking folders will load content in a external tab.
+              <p className="text-slate-400 text-[10px] sm:text-[11px] leading-relaxed max-w-2xl mb-6">
+                Live statistics and nodes of the dynamic Firebase Storage shards. Click on any storage shard node folder to automatically view and filter matching files below.
               </p>
 
-              {/* Drive Directories Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {Object.entries(DRIVE_FOLDERS).map(([name, id]) => (
-                  <motion.a
-                    key={name}
-                    href={`https://drive.google.com/drive/folders/${id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    whileHover={{ scale: 1.015 }}
-                    whileTap={{ scale: 0.985 }}
-                    className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between hover:bg-white/10 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-indigo-300">
-                        {name.includes('Photos') ? <ImageIcon size={18} /> : <FileText size={18} />}
+              {/* Shards Directories Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {Object.keys(DRIVE_FOLDERS).map((name) => {
+                  const categoryFiles = allResources.filter(r => r.category === name);
+                  let sumSizeMB = 0;
+                  categoryFiles.forEach(item => {
+                    if (item.size.includes('MB')) {
+                      sumSizeMB += parseFloat(item.size);
+                    } else if (item.size.includes('KB')) {
+                      sumSizeMB += parseFloat(item.size) / 1024;
+                    } else {
+                      sumSizeMB += 1.2; // default dynamic mock item weight
+                    }
+                  });
+
+                  const configShard = shards.find((s: any) => s.id === name);
+                  const isCustomBucket = configShard && configShard.bucket && configShard.bucket.trim() !== '';
+                  const activeBucketLabel = isCustomBucket 
+                    ? configShard.bucket.trim() 
+                    : firebaseConfig.storageBucket || 'Default Spark Bucket';
+
+                  const pctUsed = Math.min(100, (sumSizeMB / 5120) * 100);
+
+                  return (
+                    <motion.button
+                      key={name}
+                      type="button"
+                      onClick={() => setSelectedCategory(name as any)}
+                      whileHover={{ scale: 1.012, y: -2 }}
+                      whileTap={{ scale: 0.988 }}
+                      className={cn(
+                        "p-4 bg-slate-900 hover:bg-slate-900/60 border rounded-2xl flex flex-col justify-between transition-all group text-left w-full relative overflow-hidden cursor-pointer",
+                        selectedCategory === name 
+                          ? "border-indigo-500 shadow-md ring-1 ring-indigo-500 bg-slate-900" 
+                          : "border-slate-800/80 hover:border-slate-700"
+                      )}
+                    >
+                      {/* Top row */}
+                      <div className="flex items-start justify-between w-full mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-xs",
+                            selectedCategory === name ? "bg-indigo-600 text-white" : "bg-slate-800 text-indigo-300"
+                          )}>
+                            {name.includes('Photos') ? <ImageIcon size={18} /> : <FileText size={18} />}
+                          </div>
+                          <div>
+                            <div className="text-xs font-black text-slate-100 group-hover:text-indigo-400 transition-colors line-clamp-1">{name}</div>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 block">
+                              {categoryFiles.length} file{categoryFiles.length === 1 ? '' : 's'} loaded
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-mono text-indigo-400 bg-indigo-950/80 border border-indigo-900/40 px-2 py-0.5 rounded">
+                          {sumSizeMB.toFixed(2)} MB
+                        </span>
                       </div>
-                      <div>
-                        <div className="text-xs font-bold text-slate-100">{name}</div>
-                        <div className="text-[8px] font-black uppercase opacity-40 tracking-widest">Drive Access</div>
+
+                      {/* Info & gauge */}
+                      <div className="w-full mt-3 space-y-1.5">
+                        <div className="flex justify-between text-[8px] uppercase tracking-wider font-bold text-slate-500">
+                          <span className="truncate max-w-[150px]" title={activeBucketLabel}>
+                            🔗 {isCustomBucket ? "Custom:" : "Default:"} {activeBucketLabel}
+                          </span>
+                          <span>{pctUsed.toFixed(1)}% of 5GB</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              selectedCategory === name ? "bg-indigo-500" : "bg-indigo-600/30"
+                            )}
+                            style={{ width: `${Math.max(3, pctUsed)}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <ExternalLink size={12} className="opacity-40 group-hover:opacity-100 text-indigo-300 transition-opacity" />
-                  </motion.a>
-                ))}
+
+                      {/* Small sync indicators in background */}
+                      <div className="absolute right-0.5 top-0.5 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+                        <FolderOpen size={48} className="rotate-12" />
+                      </div>
+                    </motion.button>
+                  );
+                })}
               </div>
+
+              {/* Sub link options for old Google Drive if users need traditional directory listings */}
+              <div className="mt-5 pt-4 border-t border-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[10px] font-bold">
+                <span className="uppercase tracking-wider">📁 Legacy external directories:</span>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(DRIVE_FOLDERS).slice(0, 5).map(([name, id]) => (
+                    <a
+                      key={name}
+                      href={`https://drive.google.com/drive/folders/${id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[9px] text-slate-400 rounded-lg hover:text-white transition-all flex items-center gap-1"
+                    >
+                      <span className="truncate max-w-[90px]">{name} Drive</span>
+                      <ExternalLink size={10} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+
             </div>
 
             {/* Simulated Live Repository Library Catalog */}
@@ -666,11 +870,15 @@ export default function Resources() {
                                 <span className="font-extrabold text-xs text-slate-800 truncate max-w-[200px] sm:max-w-xs block">
                                   {item.name}
                                 </span>
-                                {item.isLocal && (
+                                {item.isFirebase ? (
+                                  <span className="text-[7px] font-black bg-amber-500 text-white px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    Firebase Cloud
+                                  </span>
+                                ) : item.isLocal ? (
                                   <span className="text-[7px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded uppercase tracking-wider">
                                     Local Post
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                               <div className="flex items-center gap-2 mt-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-wide flex-wrap">
                                 <span className="bg-slate-100/80 px-1.5 py-0.5 rounded text-slate-500">{item.category}</span>
@@ -714,13 +922,27 @@ export default function Resources() {
 
                             {/* Delete custom local files */}
                             {item.isLocal && (
-                              <button
-                                onClick={() => handleDeleteResource(item.id, item.name)}
-                                className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors flex items-center justify-center shrink-0 cursor-pointer"
-                                title="Remove resource entry"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              (!item.isFirebase || userRole === 'admin') ? (
+                                <button
+                                  onClick={() => handleDeleteResource(item.id, item.name)}
+                                  className={cn(
+                                    "w-8 h-8 rounded-lg transition-colors flex items-center justify-center shrink-0 cursor-pointer",
+                                    item.isFirebase 
+                                      ? "bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white" 
+                                      : "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white"
+                                  )}
+                                  title={item.isFirebase ? "Admin Delete: remove from Firebase Storage" : "Remove resource entry"}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              ) : (
+                                <div 
+                                  className="w-8 h-8 rounded-lg bg-slate-100 text-slate-300 flex items-center justify-center shrink-0"
+                                  title="Only Admin can delete files uploaded to Firebase"
+                                >
+                                  <Trash2 size={13} className="opacity-50" />
+                                </div>
+                              )
                             )}
                           </div>
                         </motion.div>

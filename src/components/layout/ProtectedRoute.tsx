@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 interface ProtectedRouteProps {
-  role?: 'admin' | 'user';
+  role?: 'admin' | 'user' | 'hod';
 }
 
 export default function ProtectedRoute({ role }: ProtectedRouteProps) {

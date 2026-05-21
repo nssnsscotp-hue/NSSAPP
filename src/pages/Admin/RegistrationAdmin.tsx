@@ -17,6 +17,7 @@ interface Volunteer {
   row: string;
   role?: string;
   password?: string;
+  department?: string;
 }
 
 export default function RegistrationAdmin() {
@@ -27,12 +28,20 @@ export default function RegistrationAdmin() {
   const [confirmingAction, setConfirmingAction] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showRegForm, setShowRegForm] = useState(false);
+  const [showHODForm, setShowHODForm] = useState(false);
   const [regData, setRegData] = useState({
-    unit: '',
+    unit: '36',
     name: '',
     mobile: '',
     username: '',
-    password: ''
+    password: '',
+    department: 'English'
+  });
+  const [hodData, setHodData] = useState({
+    name: '',
+    username: '',
+    password: '',
+    department: 'English'
   });
 
   const fetchData = async () => {
@@ -59,7 +68,8 @@ export default function RegistrationAdmin() {
           mobile: p.mobile,
           username: p.username,
           row: p.id,
-          password: p.password
+          password: p.password,
+          department: p.department || ''
         })));
       }
       
@@ -70,7 +80,8 @@ export default function RegistrationAdmin() {
           mobile: a.mobile,
           username: a.username,
           row: a.id,
-          role: a.role
+          role: a.role,
+          department: a.department || ''
         })));
       }
     } catch (err: any) { 
@@ -143,7 +154,8 @@ export default function RegistrationAdmin() {
           password: (userToApprove as any).password,
           role: 'volunteer',
           points: 0,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          department: (userToApprove as any).department || 'English'
         };
 
         console.log("Attempting profile creation with ID:", newProfileId);
@@ -209,7 +221,7 @@ export default function RegistrationAdmin() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regData.name || !regData.unit || !regData.username || !regData.password || !regData.mobile) {
+    if (!regData.name || !regData.unit || !regData.username || !regData.password || !regData.mobile || !regData.department) {
       alert("Please fill all fields");
       return;
     }
@@ -227,18 +239,62 @@ export default function RegistrationAdmin() {
         unit: regData.unit,
         mobile: regData.mobile,
         username: regData.username.toLowerCase(),
-        password: hashedPassword
+        password: hashedPassword,
+        department: regData.department
       }]);
 
       if (error) throw error;
       
       alert("Registration request created successfully");
-      setRegData({ unit: '', name: '', mobile: '', username: '', password: '' });
+      setRegData({ unit: '36', name: '', mobile: '', username: '', password: '', department: 'English' });
       setShowRegForm(false);
       fetchData();
     } catch (err) {
       console.error(err);
       alert("Registration failed.");
+    } finally {
+      setActioning(null);
+    }
+  };
+
+  const handleRegisterHOD = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hodData.name || !hodData.username || !hodData.password || !hodData.department) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    setActioning('register_hod');
+    try {
+      // Ensure session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) await supabase.auth.signInAnonymously();
+
+      const hashedPassword = await bcrypt.hash(hodData.password, 10);
+      
+      const newHODId = 'hod-' + Math.random().toString(16).slice(2, 14);
+
+      const { error } = await supabase.from('profiles').insert([{
+        id: newHODId,
+        full_name: hodData.name,
+        username: hodData.username.toLowerCase(),
+        password: hashedPassword,
+        role: 'hod',
+        department: hodData.department,
+        unit: 'HOD-DEP',
+        points: 0,
+        created_at: new Date().toISOString()
+      }]);
+
+      if (error) throw error;
+      
+      alert(`Success! HOD registered successfully for ${hodData.department} department.`);
+      setHodData({ name: '', username: '', password: '', department: 'English' });
+      setShowHODForm(false);
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      alert("HOD registration failed: " + (err.message || "Database error"));
     } finally {
       setActioning(null);
     }
@@ -266,10 +322,17 @@ export default function RegistrationAdmin() {
         
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
           <button 
-            onClick={() => setShowRegForm(!showRegForm)}
+            onClick={() => { setShowRegForm(!showRegForm); setShowHODForm(false); }}
             className="w-full sm:w-auto h-12 px-6 bg-slate-900 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
           >
-            <UserPlus size={18} /> {showRegForm ? 'Cancel' : 'Register New'}
+            <UserPlus size={18} /> {showRegForm ? 'Cancel' : 'Register Volunteer'}
+          </button>
+          
+          <button 
+            onClick={() => { setShowHODForm(!showHODForm); setShowRegForm(false); }}
+            className="w-full sm:w-auto h-12 px-6 bg-blue-700 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
+          >
+            <Shield size={18} /> {showHODForm ? 'Cancel' : 'Register HOD'}
           </button>
 
           <div className="relative w-full sm:w-80">
@@ -310,6 +373,69 @@ export default function RegistrationAdmin() {
       )}
 
       <AnimatePresence>
+        {showHODForm && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-6"
+          >
+            <div className="bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-blue-200 shadow-xl shadow-blue-600/5 italic">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 mb-6 flex items-center gap-2">
+                <Shield size={14} /> Direct HOD Account Provisioning
+              </h3>
+              <form onSubmit={handleRegisterHOD} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">HOD Full Name</label>
+                  <input 
+                    type="text" required placeholder="e.g. Dr. Ramesh P"
+                    value={hodData.name} onChange={e => setHodData({...hodData, name: e.target.value})}
+                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Choose Username</label>
+                  <input 
+                    type="text" required placeholder="e.g. hod_cs"
+                    value={hodData.username} onChange={e => setHodData({...hodData, username: e.target.value})}
+                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
+                  <input 
+                    type="password" required placeholder="••••••••"
+                    value={hodData.password} onChange={e => setHodData({...hodData, password: e.target.value})}
+                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Department</label>
+                  <div className="flex gap-2">
+                    <select 
+                      value={hodData.department} onChange={e => setHodData({...hodData, department: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    >
+                      {['English', 'Hindi', 'Malayalam', 'Commerce', 'Physics', 'Chemistry', 'Economics', 'Computer Science', 'Electronics', 'Botany', 'Zoology', 'Mathematics', 'History'].map(dep => (
+                        <option key={dep} value={dep}>{dep}</option>
+                      ))}
+                    </select>
+                    <button 
+                      type="submit"
+                      disabled={actioning === 'register_hod'}
+                      className="h-12 px-6 bg-blue-700 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center disabled:opacity-50"
+                    >
+                      {actioning === 'register_hod' ? <Loader2 className="animate-spin" size={18} /> : <ChevronRight size={20} />}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showRegForm && (
           <motion.div 
             initial={{ opacity: 0, height: 0 }}
@@ -321,7 +447,7 @@ export default function RegistrationAdmin() {
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-6 flex items-center gap-2">
                 <UserPlus size={14} /> Quick Volunteer Registration
               </h3>
-              <form onSubmit={handleRegister} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <form onSubmit={handleRegister} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
                   <input 
@@ -355,17 +481,25 @@ export default function RegistrationAdmin() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password & Dept</label>
                   <div className="flex gap-2">
                     <input 
                       type="password" required placeholder="••••••••"
                       value={regData.password} onChange={e => setRegData({...regData, password: e.target.value})}
                       className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
                     />
+                    <select 
+                      value={regData.department} onChange={e => setRegData({...regData, department: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs shrink"
+                    >
+                      {['English', 'Hindi', 'Malayalam', 'Commerce', 'Physics', 'Chemistry', 'Economics', 'Computer Science', 'Electronics', 'Botany', 'Zoology', 'Mathematics', 'History'].map(dep => (
+                        <option key={dep} value={dep}>{dep}</option>
+                      ))}
+                    </select>
                     <button 
                       type="submit"
                       disabled={actioning === 'register'}
-                      className="h-12 px-6 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all flex items-center justify-center disabled:opacity-50"
+                      className="h-12 px-6 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all flex items-center justify-center disabled:opacity-50 shrink-0"
                     >
                       {actioning === 'register' ? <Loader2 className="animate-spin" size={18} /> : <ChevronRight size={20} />}
                     </button>
@@ -497,6 +631,9 @@ export default function RegistrationAdmin() {
                     </td>
                     <td className="px-8 py-6">
                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Unit {u.unit}</span>
+                       {(u as any).department && (
+                         <span className="block text-[9px] font-bold text-blue-600 uppercase">{(u as any).department}</span>
+                       )}
                     </td>
                     <td className="px-8 py-6">
                        <div className={cn(

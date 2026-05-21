@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Lock, Loader2, LogIn, Shield, School, UserPlus } from 'lucide-react';
+import { User, Lock, Loader2, LogIn, Shield, School, UserPlus, BookOpen } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
@@ -19,6 +19,8 @@ export default function Login() {
       const role = localStorage.getItem("role");
       if (role === 'admin') {
         navigate('/admin');
+      } else if (role === 'hod') {
+        navigate('/hod');
       } else {
         navigate('/');
       }
@@ -54,6 +56,7 @@ export default function Login() {
   const [regMobile, setRegMobile] = useState('');
   const [regUser, setRegUser] = useState('');
   const [regPass, setRegPass] = useState('');
+  const [regDepartment, setRegDepartment] = useState('English');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,16 +140,25 @@ export default function Login() {
               
               localStorage.setItem("isLoggedIn", "true");
               localStorage.setItem("user", profile.username);
+              localStorage.setItem("username", profile.username);
               localStorage.setItem("userId", profile.id);
               localStorage.setItem("role", profile.role || 'volunteer');
               localStorage.setItem("name", profile.full_name);
               localStorage.setItem("phone", profile.mobile || "");
               localStorage.setItem("unit", profile.unit || "");
+              localStorage.setItem("department", profile.department || "");
               
               // Short delay to ensure localStorage is written before navigation
               setTimeout(() => {
                 setLoading(false);
-                navigate('/');
+                const role = profile.role || 'volunteer';
+                if (role === 'admin') {
+                  navigate('/admin');
+                } else if (role === 'hod') {
+                  navigate('/hod');
+                } else {
+                  navigate('/');
+                }
               }, 100);
               return;
             } else {
@@ -224,7 +236,7 @@ export default function Login() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regUnit || !regName || !regUser || !regPass || !regMobile) {
+    if (!regUnit || !regName || !regUser || !regPass || !regMobile || !regDepartment) {
       setError('Please fill all fields');
       return;
     }
@@ -243,7 +255,8 @@ export default function Login() {
           unit: regUnit,
           mobile: regMobile,
           username: regUser.toLowerCase(),
-          password: hashedPassword
+          password: hashedPassword,
+          department: regDepartment
         }]);
 
       if (regErr) {
@@ -373,6 +386,17 @@ export default function Login() {
                     >
                       <option value="36">Unit 36</option>
                       <option value="94">Unit 94</option>
+                    </select>
+                  </div>
+                  <div className="relative">
+                    <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <select 
+                      value={regDepartment} onChange={e => setRegDepartment(e.target.value)}
+                      className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-sm"
+                    >
+                      {['English', 'Hindi', 'Malayalam', 'Commerce', 'Physics', 'Chemistry', 'Economics', 'Computer Science', 'Electronics', 'Botany', 'Zoology', 'Mathematics', 'History'].map(dep => (
+                        <option key={dep} value={dep}>{dep}</option>
+                      ))}
                     </select>
                   </div>
                 </motion.div>

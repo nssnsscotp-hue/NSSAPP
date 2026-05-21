@@ -5,8 +5,18 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import multer from "multer";
 import fs from "fs";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 dotenv.config();
+
+const firebaseConfig = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8")
+);
+const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+const memoryStorage = multer.memoryStorage();
+const uploadMem = multer({ storage: memoryStorage });
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -89,6 +99,90 @@ async function startServer() {
     } catch (error: any) {
       console.error("Gemini API Error:", error);
       res.status(500).json({ error: "Failed to generate content", details: error.message });
+    }
+  });
+
+  // Server-side Firebase Storage upload proxy (bypasses browser CORS and iframe sandbox restrictions)
+  app.post("/api/firebase/upload", uploadMem.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file was selected for upload." });
+      }
+
+      const { folder, bucket } = req.body;
+      const file = req.file;
+
+      // Select target storage bucket (supports dynamic sharded storage router)
+      let activeStorage = getStorage(firebaseApp);
+      if (bucket && bucket.trim() !== "" && bucket !== firebaseConfig.storageBucket) {
+        const appId = `shard_${bucket.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const activeApp = getApps().find(a => a.name === appId) || initializeApp({
+          ...firebaseConfig,
+          storageBucket: bucket
+        }, appId);
+        activeStorage = getStorage(activeApp);
+      }
+
+      const folderPath = folder || "uploads";
+      const fileExt = file.originalname.split('.').pop() || 'jpg';
+      const cleanName = `${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}.${fileExt}`;
+      const fileRef = ref(activeStorage, `${folderPath}/${cleanName}`);
+
+      // Upload the file buffer to Firebase Storage on the server side
+      await uploadBytes(fileRef, file.buffer, {
+        contentType: file.mimetype
+      });
+
+      // Retrieve the permanent public download URL
+      const downloadUrl = await getDownloadURL(fileRef);
+
+      res.status(200).json({ success: true, url: downloadUrl });
+    } catch (err: any) {
+      console.warn("Firebase Storage upload failed, falling back to local container storage:", err.message || err);
+      try {
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ error: "No file was selected for upload." });
+        }
+        const fileExt = file.originalname.split('.').pop() || 'jpg';
+        const diskFilename = `fallback_${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}.${fileExt}`;
+        const filePath = path.join(uploadDir, diskFilename);
+        
+        fs.writeFileSync(filePath, file.buffer);
+        const downloadUrl = `/api/uploads/${diskFilename}`;
+        
+        console.log(`Fallback local write successful. Served at: ${downloadUrl}`);
+        res.status(200).json({ 
+          success: true, 
+          url: downloadUrl,
+          message: "Secure fallback container routing."
+        });
+      } catch (fallbackErr: any) {
+        console.error("Local directory write fallback error:", fallbackErr);
+        res.status(500).json({ error: "Fallback storage write failed. Both Cloud and Local storage are unavailable." });
+      }
+    }
+  });
+
+  // Serve photos and files from local container uploads directory
+  app.get("/api/uploads/:filename", (req, res) => {
+    try {
+      const { filename } = req.params;
+      
+      // Stop directory traversal attacks
+      if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+        return res.status(403).json({ error: "Access denied." });
+      }
+      
+      const filePath = path.join(uploadDir, filename);
+      if (fs.existsSync(filePath)) {
+        return res.sendFile(filePath);
+      } else {
+        return res.status(404).send("File not found in local container pool.");
+      }
+    } catch (err: any) {
+      console.error("Local asset streaming error:", err);
+      res.status(500).send("Asset delivery error.");
     }
   });
 

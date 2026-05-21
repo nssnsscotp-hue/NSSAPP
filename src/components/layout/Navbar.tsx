@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, LogOut, Home, Bell, User, ShieldAlert, Heart, MessageSquare, Image, HelpCircle, Trophy, Contact, BarChart3, Library, GraduationCap, Calendar } from 'lucide-react';
+import { Menu, X, LogOut, LogIn, Home, Bell, User, ShieldAlert, Heart, MessageSquare, Image, HelpCircle, Trophy, Contact, BarChart3, Library, GraduationCap, Calendar } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 
@@ -9,6 +9,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin';
 
@@ -39,8 +40,9 @@ export default function Navbar() {
     }
   };
 
-  const navItems = [
+  const allNavItems = [
     { name: 'Home', href: '/', icon: Home },
+    { name: 'My Profile', href: '/profile', icon: User },
     { name: 'Metrics', href: '/performance', icon: BarChart3 },
     { name: 'Attendance', href: '/attendance', icon: Calendar },
     { name: 'Safety Status', href: '/home-arrival', icon: Home },
@@ -56,7 +58,15 @@ export default function Navbar() {
     { name: 'Complaints', href: '/complaints', icon: MessageSquare },
   ];
 
-  if (isAdmin) {
+  const publicNavItems = [
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'Announcements', href: '/announcements', icon: Bell },
+    { name: 'Gallery', href: '/gallery', icon: Image },
+  ];
+
+  const navItems = isLoggedIn ? [...allNavItems] : [...publicNavItems];
+
+  if (isLoggedIn && isAdmin) {
     navItems.push({ name: 'Admin', href: '/admin', icon: User });
   }
 
@@ -103,13 +113,23 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="w-px h-8 bg-slate-200 mx-2" />
-              <button
-                onClick={handleLogout}
-                className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-red-600 transition-all duration-300 shadow-lg shadow-slate-900/20"
-                title="Logout"
-              >
-                <LogOut size={18} className="pointer-events-none" />
-              </button>
+              {isLoggedIn ? (
+                <button
+                  onClick={handleLogout}
+                  className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-red-600 transition-all duration-300 shadow-lg shadow-slate-900/20"
+                  title="Logout"
+                >
+                  <LogOut size={18} className="pointer-events-none" />
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  className="px-6 h-12 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-brand-500/20 font-black text-[10px] uppercase tracking-widest whitespace-nowrap"
+                >
+                  <LogIn size={14} />
+                  <span>Portal Login</span>
+                </Link>
+              )}
             </div>
           </div>
 
@@ -153,13 +173,24 @@ export default function Navbar() {
                 ))}
               </div>
               <div className="p-1 mt-1 border-t border-slate-100/50">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut size={18} className="pointer-events-none" />
-                  Logout Account
-                </button>
+                {isLoggedIn ? (
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={18} className="pointer-events-none" />
+                    Logout Account
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-brand-600 hover:bg-brand-50 transition-colors"
+                  >
+                    <LogIn size={18} />
+                    Portal Login
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>
