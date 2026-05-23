@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { ShieldAlert, Phone, MapPin, MessageSquare, AlertTriangle, Volume2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 

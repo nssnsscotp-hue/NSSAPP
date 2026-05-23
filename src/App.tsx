@@ -24,12 +24,13 @@ import AlumniNetwork from './pages/Alumni';
 import NSSAssistant from './components/Assistant/NSSAssistant';
 import Profile from './pages/Profile';
 import HODDashboard from './pages/HOD/HODDashboard';
+import PrincipalDashboard from './pages/Principal/PrincipalDashboard';
 
 // Layout wrapper to conditionally show navbar
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const hideNavbarOn = ['/login', '/hod'];
-  const shouldHideNavbar = hideNavbarOn.includes(location.pathname) || location.pathname.startsWith('/hod') || location.pathname.startsWith('/admin');
+  const hideNavbarOn = ['/login', '/hod', '/principal'];
+  const shouldHideNavbar = hideNavbarOn.includes(location.pathname) || location.pathname.startsWith('/hod') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/principal');
   const shouldHideAssistant = shouldHideNavbar;
 
   return (
@@ -80,6 +81,10 @@ export default function App() {
 
           <Route element={<ProtectedRoute role="hod" />}>
             <Route path="/hod" element={<HODDashboard />} />
+          </Route>
+
+          <Route element={<ProtectedRoute role="principal" />}>
+            <Route path="/principal" element={<PrincipalDashboard />} />
           </Route>
 
           {/* Catch-all route to handle 404s/mismatches */}

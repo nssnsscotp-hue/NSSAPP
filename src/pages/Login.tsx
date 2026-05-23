@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { User, Lock, Loader2, LogIn, Shield, School, UserPlus, BookOpen } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
 import { cn } from '@/src/lib/utils';
@@ -21,6 +21,8 @@ export default function Login() {
         navigate('/admin');
       } else if (role === 'hod') {
         navigate('/hod');
+      } else if (role === 'principal') {
+        navigate('/principal');
       } else {
         navigate('/');
       }
@@ -80,6 +82,22 @@ export default function Login() {
       localStorage.setItem("name", "Master Admin (Recovery)");
       setLoading(false);
       navigate('/admin');
+      return;
+    }
+    
+    // PRINCIPAL CREDENTIALS BYPASS
+    if (sanitizedUser === 'principalnss' && sanitizedPass === '@principal3694') {
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("user", "principalnss");
+      localStorage.setItem("username", "principalnss");
+      localStorage.setItem("userId", "00000000-0000-0000-0000-000000000003");
+      localStorage.setItem("role", "principal");
+      localStorage.setItem("name", "Dr. NSS Principal");
+      localStorage.setItem("phone", "");
+      localStorage.setItem("unit", "");
+      localStorage.setItem("department", "");
+      setLoading(false);
+      navigate('/principal');
       return;
     }
     
@@ -156,6 +174,8 @@ export default function Login() {
                   navigate('/admin');
                 } else if (role === 'hod') {
                   navigate('/hod');
+                } else if (role === 'principal') {
+                  navigate('/principal');
                 } else {
                   navigate('/');
                 }
@@ -183,6 +203,74 @@ export default function Login() {
           setError("Account inactive: No password set. Contact admin.");
           setLoading(false);
           return;
+        }
+      }
+
+      // 1.5. If not in profiles, check hod_profiles for HOD login
+      if (!profile) {
+        console.log("Checking hod_profiles from Supabase...");
+        const { data: hodProfile, error: hodProfileErr } = await supabase
+          .from('hod_profiles')
+          .select('*')
+          .eq('username', sanitizedUser)
+          .maybeSingle();
+
+        if (hodProfileErr) {
+          console.error("Supabase hodProfile fetch error:", hodProfileErr);
+          loginFinished = true;
+          clearTimeout(loginTimeout);
+          setError(`Database unreachable: ${hodProfileErr.message}`);
+          setLoading(false);
+          return;
+        }
+
+        if (hodProfile) {
+          console.log("User found in hod_profiles. Table ID:", hodProfile.id);
+          const hashedPassword = hodProfile.password;
+          if (typeof hashedPassword === 'string' && hashedPassword.length >= 1) {
+            try {
+              console.log("Verifying HOD password...");
+              let isMatch = false;
+              if (hashedPassword.startsWith('$2') && hashedPassword.length > 20) {
+                isMatch = await bcrypt.compare(sanitizedPass, hashedPassword);
+              } else {
+                isMatch = hashedPassword === sanitizedPass;
+              }
+
+              if (isMatch) {
+                loginFinished = true;
+                clearTimeout(loginTimeout);
+                localStorage.setItem("isLoggedIn", "true");
+                localStorage.setItem("user", hodProfile.username);
+                localStorage.setItem("username", hodProfile.username);
+                localStorage.setItem("userId", hodProfile.id);
+                localStorage.setItem("role", "hod");
+                localStorage.setItem("name", hodProfile.full_name);
+                localStorage.setItem("phone", hodProfile.mobile || "");
+                localStorage.setItem("unit", ""); // HODs have no unit
+                localStorage.setItem("department", hodProfile.department || "");
+
+                setTimeout(() => {
+                  setLoading(false);
+                  navigate('/hod');
+                }, 100);
+                return;
+              } else {
+                loginFinished = true;
+                clearTimeout(loginTimeout);
+                setError("Incorrect password. Please check and try again.");
+                setLoading(false);
+                return;
+              }
+            } catch (bcryptErr) {
+              console.error("Password verification error:", bcryptErr);
+              loginFinished = true;
+              clearTimeout(loginTimeout);
+              setError("Password check failed. Try again.");
+              setLoading(false);
+              return;
+            }
+          }
         }
       }
 
@@ -284,6 +372,14 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-800">
       <div className="max-w-md w-full">
+        <div className="mb-6">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition"
+          >
+            ← Back to Homepage
+          </Link>
+        </div>
         <div className="text-center mb-10">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}

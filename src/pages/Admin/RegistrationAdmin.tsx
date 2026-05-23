@@ -29,6 +29,8 @@ export default function RegistrationAdmin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showRegForm, setShowRegForm] = useState(false);
   const [showHODForm, setShowHODForm] = useState(false);
+  const [showSqlHelper, setShowSqlHelper] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
   const [regData, setRegData] = useState({
     unit: '36',
     name: '',
@@ -41,8 +43,41 @@ export default function RegistrationAdmin() {
     name: '',
     username: '',
     password: '',
-    department: 'English'
+    department: 'English',
+    mobile: ''
   });
+
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info';
+    message: string;
+    title?: string;
+  }>({ show: false, type: 'info', message: '' });
+
+  const notificationTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const showFeedback = (type: 'success' | 'error' | 'info', message: string, title?: string) => {
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+    setNotification({
+      show: true,
+      type,
+      message,
+      title: title || (type === 'success' ? 'Success' : type === 'error' ? 'Security Alert' : 'System Information')
+    });
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 5000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -51,14 +86,36 @@ export default function RegistrationAdmin() {
       
       const pendRes = await supabase.from('pending_requests').select('*').order('created_at', { ascending: false });
       const appRes = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      const hodRes = await supabase.from('hod_profiles').select('*').order('created_at', { ascending: false });
       
+      let combinedError = '';
       if (pendRes.error) {
         console.error("Pending Requests Error:", pendRes.error);
         if (pendRes.error.message?.includes('RLS')) {
-          setError("Database Access Denied: Check Supabase RLS Policies.");
+          combinedError += "Pending Requests: RLS policy restriction. ";
         } else {
-          setError("Connection Error: " + pendRes.error.message);
+          combinedError += "Pending Requests Error: " + pendRes.error.message + ". ";
         }
+      }
+
+      if (appRes.error) {
+        console.error("Profiles Table Load Error:", appRes.error);
+        if (appRes.error.message?.includes('RLS')) {
+          combinedError += "Profiles Table: RLS policy restriction. ";
+        } else if (appRes.error.message?.includes('does not exist')) {
+          combinedError += "Profiles table is missing from your Supabase database. Try running the schema SQL in your Supabase SQL Editor. ";
+        } else {
+          combinedError += "Profiles Error: " + appRes.error.message + ". ";
+        }
+      }
+
+      if (hodRes.error) {
+        console.warn("HOD Profiles Load Error (might not exist yet):", hodRes.error);
+        // Do not block the entire app, as the user may still need to execute the SQL
+      }
+
+      if (combinedError) {
+        setError(combinedError);
       }
       
       if (pendRes.data) {
@@ -73,8 +130,9 @@ export default function RegistrationAdmin() {
         })));
       }
       
+      let combinedApprovedList: any[] = [];
       if (appRes.data) {
-        setApproved(appRes.data.map((a: any) => ({
+        combinedApprovedList = appRes.data.map((a: any) => ({
           name: a.full_name,
           unit: a.unit,
           mobile: a.mobile,
@@ -82,11 +140,24 @@ export default function RegistrationAdmin() {
           row: a.id,
           role: a.role,
           department: a.department || ''
-        })));
+        }));
       }
+      if (hodRes.data) {
+        const hodsArray = hodRes.data.map((h: any) => ({
+          name: h.full_name,
+          unit: 'HOD',
+          mobile: h.mobile,
+          username: h.username,
+          row: h.id,
+          role: 'hod',
+          department: h.department || ''
+        }));
+        combinedApprovedList = [...combinedApprovedList, ...hodsArray];
+      }
+      setApproved(combinedApprovedList);
     } catch (err: any) { 
       console.error("Fetch error:", err); 
-      setError("Fatal Connection Error. Check console.");
+      setError("Fatal database connection/sync error. Check console coordinates.");
     } finally { 
       setLoading(false); 
     }
@@ -189,31 +260,36 @@ export default function RegistrationAdmin() {
           await supabase.from('pending_requests').delete().eq('username', userToApprove.username);
         }
         
-        alert(`Success! ${userToApprove.name} is now an active volunteer.`);
+        showFeedback('success', `Success! ${userToApprove.name} is now an active volunteer.`);
       } else if (action === 'reject') {
         const { error } = await supabase.from('pending_requests').delete().eq('id', id);
         if (error && isNumeric) {
           await supabase.from('pending_requests').delete().eq('row', numericId);
         }
-        alert("Request Rejected");
+        showFeedback('info', "Request Rejected", "Rejected Request");
       } else if (action === 'makeAdmin') {
         const { error } = await supabase.from('profiles').update({ role: 'admin' }).eq('id', id);
         if (error && isNumeric) {
           await supabase.from('profiles').update({ role: 'admin' }).eq('row', numericId);
         }
-        alert("Promoted to Admin");
+        showFeedback('success', "Promoted to Admin", "Rights Upgraded");
       } else if (action === 'deleteApproved' as any) {
-        const { error } = await supabase.from('profiles').delete().eq('id', id);
-        if (error && isNumeric) {
-          await supabase.from('profiles').delete().eq('row', numericId);
+        const approvedUser = approved.find(a => a.row === id);
+        if (approvedUser && approvedUser.role === 'hod') {
+          const { error } = await supabase.from('hod_profiles').delete().eq('id', id);
+        } else {
+          const { error } = await supabase.from('profiles').delete().eq('id', id);
+          if (error && isNumeric) {
+            await supabase.from('profiles').delete().eq('row', numericId);
+          }
         }
-        alert("Account Deleted. They can now register again.");
+        showFeedback('info', "Account Deleted. They can now register again.", "Account Purged");
       }
       
       fetchData();
     } catch (err: any) { 
       console.error(err); 
-      alert("Action failed: " + (err.message || "Database error"));
+      showFeedback('error', "Action failed: " + (err.message || "Database error"));
     } finally { 
       setActioning(null); 
     }
@@ -222,7 +298,7 @@ export default function RegistrationAdmin() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regData.name || !regData.unit || !regData.username || !regData.password || !regData.mobile || !regData.department) {
-      alert("Please fill all fields");
+      showFeedback('error', "Please fill all fields", "Validation Failed");
       return;
     }
 
@@ -245,13 +321,13 @@ export default function RegistrationAdmin() {
 
       if (error) throw error;
       
-      alert("Registration request created successfully");
+      showFeedback('success', "Registration request created successfully", "Request Saved");
       setRegData({ unit: '36', name: '', mobile: '', username: '', password: '', department: 'English' });
       setShowRegForm(false);
       fetchData();
     } catch (err) {
       console.error(err);
-      alert("Registration failed.");
+      showFeedback('error', "Registration failed.", "System Error");
     } finally {
       setActioning(null);
     }
@@ -259,42 +335,94 @@ export default function RegistrationAdmin() {
 
   const handleRegisterHOD = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("handleRegisterHOD: Submission triggered with values:", {
+      name: hodData.name,
+      username: hodData.username,
+      department: hodData.department,
+      mobile: hodData.mobile,
+      hasPassword: !!hodData.password
+    });
+
     if (!hodData.name || !hodData.username || !hodData.password || !hodData.department) {
-      alert("Please fill all fields");
+      showFeedback('error', "Please fill all fields", "Validation Failed");
       return;
     }
 
     setActioning('register_hod');
     try {
-      // Ensure session for RLS
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) await supabase.auth.signInAnonymously();
+      console.log("handleRegisterHOD: Checking Supabase session...");
+      const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+      
+      if (sessionErr) {
+        console.warn("handleRegisterHOD: Session fetch returned error:", sessionErr);
+      }
 
+      if (!session) {
+        console.log("handleRegisterHOD: No active session. Attempting anonymous login fallback...");
+        const { error: anonErr } = await supabase.auth.signInAnonymously();
+        if (anonErr) {
+          console.warn("handleRegisterHOD: Anonymous login failed, proceeding anyway:", anonErr);
+        } else {
+          console.log("handleRegisterHOD: Successfully signed in anonymously to protect connection state");
+        }
+      }
+
+      console.log("handleRegisterHOD: Hashing password client-side...");
       const hashedPassword = await bcrypt.hash(hodData.password, 10);
       
-      const newHODId = 'hod-' + Math.random().toString(16).slice(2, 14);
+      const generateUUID = () => {
+        try {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+          }
+        } catch (e) {}
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+      
+      const newHODId = generateUUID();
+      console.log("handleRegisterHOD: Generated client profile ID:", newHODId);
 
-      const { error } = await supabase.from('profiles').insert([{
+       const payload = {
         id: newHODId,
         full_name: hodData.name,
-        username: hodData.username.toLowerCase(),
+        username: hodData.username.trim().toLowerCase(),
         password: hashedPassword,
-        role: 'hod',
         department: hodData.department,
-        unit: 'HOD-DEP',
-        points: 0,
+        mobile: hodData.mobile.trim() || '0000000000',
         created_at: new Date().toISOString()
-      }]);
+      };
 
-      if (error) throw error;
+      console.log("handleRegisterHOD: Dispatching insert to 'hod_profiles' with payload:", payload);
+
+      const { data, error } = await supabase.from('hod_profiles').insert([payload]).select();
+
+      if (error) {
+        console.error("handleRegisterHOD: Insertion DB Error Details:", error);
+        
+        let hint = "";
+        if (error.message?.includes("foreign key") || error.message?.includes("fkey")) {
+          hint = "\n\nCRITICAL DIAGNOSIS: Your 'hod_profiles' table has a Foreign Key constraint. Run the SQL script in your Supabase SQL Editor to drop this constraint if it fails.";
+        } else if (error.message?.includes("violates row-level security") || error.message?.includes("security policy")) {
+          hint = "\n\nCRITICAL DIAGNOSIS: Supabase Row Level Security (RLS) is blocking this write. Please run the SQL rules to allow anonymous insertions into 'hod_profiles'.";
+        } else if (error.message?.includes("duplicate")) {
+          hint = "\n\nCRITICAL DIAGNOSIS: This username is already registered in your hod_profiles table.";
+        }
+        
+        throw new Error(error.message + (hint ? hint : ""));
+      }
       
-      alert(`Success! HOD registered successfully for ${hodData.department} department.`);
-      setHodData({ name: '', username: '', password: '', department: 'English' });
+      console.log("handleRegisterHOD: Successful insertion result:", data);
+      showFeedback('success', `Success! HOD registered successfully for the ${hodData.department} department.`);
+      setHodData({ name: '', username: '', password: '', department: 'English', mobile: '' });
       setShowHODForm(false);
       fetchData();
     } catch (err: any) {
-      console.error(err);
-      alert("HOD registration failed: " + (err.message || "Database error"));
+      console.error("handleRegisterHOD: Full Execution Catch Block:", err);
+      showFeedback('error', "HOD registration failed!\n\nDetails: " + (err.message || "Unknown database error. Check browser console."));
     } finally {
       setActioning(null);
     }
@@ -314,6 +442,47 @@ export default function RegistrationAdmin() {
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Custom Popup Notification Toast */}
+      <AnimatePresence>
+        {notification.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md px-4"
+          >
+            <div className={cn(
+              "p-4 rounded-2xl border shadow-2xl flex items-start gap-3 backdrop-blur-md",
+              notification.type === 'success' 
+                ? "bg-emerald-600/95 border-emerald-500/30 text-white" 
+                : notification.type === 'error'
+                ? "bg-red-600/95 border-red-500/30 text-white"
+                : "bg-blue-600/95 border-blue-500/30 text-white"
+            )}>
+              <div className="shrink-0 mt-0.5">
+                {notification.type === 'success' && <CheckCircle size={20} />}
+                {notification.type === 'error' && <ShieldAlert size={20} />}
+                {notification.type === 'info' && <Shield size={20} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-extrabold text-xs uppercase tracking-widest leading-none mb-1">
+                  {notification.title}
+                </h4>
+                <p className="text-xs font-medium opacity-90 leading-relaxed break-words whitespace-pre-wrap">
+                  {notification.message}
+                </p>
+              </div>
+              <button 
+                onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+                className="shrink-0 p-1 hover:bg-white/10 rounded-lg transition-all"
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Volunteer Onboarding</h2>
@@ -335,6 +504,13 @@ export default function RegistrationAdmin() {
             <Shield size={18} /> {showHODForm ? 'Cancel' : 'Register HOD'}
           </button>
 
+          <button 
+            onClick={() => setShowSqlHelper(!showSqlHelper)}
+            className="w-full sm:w-auto h-12 px-5 bg-teal-50 border border-teal-200 text-teal-800 text-[10px] sm:text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-teal-100 transition-all flex items-center justify-center gap-2"
+          >
+            <ShieldAlert size={18} /> {showSqlHelper ? 'Hide SQL Help' : 'Database SQL Help'}
+          </button>
+
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
@@ -348,6 +524,76 @@ export default function RegistrationAdmin() {
         </div>
       </header>
 
+      {/* Database SQL Setup Guide (Collapsible) */}
+      <AnimatePresence>
+        {showSqlHelper && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-6"
+          >
+            <div className="bg-gradient-to-r from-teal-900 to-slate-900 p-6 sm:p-8 rounded-[2rem] text-slate-100 border border-teal-500/20 shadow-2xl shadow-teal-900/10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-teal-400 flex items-center gap-2">
+                    <ShieldAlert size={16} /> Supabase PostgreSQL Database Setup Guide
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">If HOD registration or approval fails, your database schema lacks the correct RLS permissions or has locked Foreign Key constraints. Run this SQL script in your Supabase SQL Editor to fix it instantly.</p>
+                </div>
+                 <button 
+                  onClick={() => {
+                    const sql = `-- Run this in your Supabase SQL Editor to configure HOD (separate table) and profiles:\n\n-- 1. Create HOD profiles table separate from volunteers\nCREATE TABLE IF NOT EXISTS public.hod_profiles (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  username TEXT UNIQUE NOT NULL,\n  full_name TEXT NOT NULL,\n  mobile TEXT DEFAULT '0000000000',\n  password TEXT NOT NULL,\n  department TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\n\nALTER TABLE public.hod_profiles ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS "Allows full access to hod_profiles" ON public.hod_profiles;\nCREATE POLICY "Allows full access to hod_profiles" ON public.hod_profiles FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);\n\n-- 2. Restore normal volunteer profiles\nALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;\nALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS "Allows full access to profiles" ON public.profiles;\nCREATE POLICY "Allows full access to profiles" ON public.profiles FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);\n\nALTER TABLE public.pending_requests ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS "Allows full access to pending_requests" ON public.pending_requests;\nCREATE POLICY "Allows full access to pending_requests" ON public.pending_requests FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);`;
+                    navigator.clipboard.writeText(sql);
+                    setCopiedSql(true);
+                    setTimeout(() => setCopiedSql(false), 2000);
+                  }}
+                  className="px-5 py-2.5 bg-teal-600 text-white font-black text-[10px] uppercase tracking-wider rounded-xl hover:bg-teal-500 transition-all shrink-0 active:scale-95"
+                >
+                  {copiedSql ? 'Copied SQL!' : 'Copy SQL Script'}
+                </button>
+              </div>
+
+              <pre className="bg-black/40 border border-teal-500/10 rounded-xl p-4 overflow-x-auto text-[11px] font-mono text-teal-200/90 leading-relaxed max-h-60 scrollbar-thin scrollbar-thumb-teal-900">
+{`-- 1. Create separate HOD Profiles Table (No units or roles mixed)
+CREATE TABLE IF NOT EXISTS public.hod_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username TEXT UNIQUE NOT NULL,
+  full_name TEXT NOT NULL,
+  mobile TEXT DEFAULT '0000000000',
+  password TEXT NOT NULL,
+  department TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Enable row-level security and grant full anonymous insertion to unblock logins
+ALTER TABLE public.hod_profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allows full access to hod_profiles" ON public.hod_profiles;
+CREATE POLICY "Allows full access to hod_profiles" 
+ON public.hod_profiles 
+FOR ALL 
+TO authenticated, anon 
+USING (true) 
+WITH CHECK (true);
+
+-- 3. Drops foreign key constraint linking Volunteer ID directly to Auth.Users if it exists.
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
+
+-- 4. Enable Row Level Security and setup unblocked access on profiles and pending_requests
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allows full access to profiles" ON public.profiles;
+CREATE POLICY "Allows full access to profiles" ON public.profiles FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);
+
+ALTER TABLE public.pending_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allows full access to pending_requests" ON public.pending_requests;
+CREATE POLICY "Allows full access to pending_requests" ON public.pending_requests FOR ALL TO authenticated, anon USING (true) WITH CHECK (true);`}
+              </pre>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {error && (
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -356,19 +602,27 @@ export default function RegistrationAdmin() {
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-red-600 text-white rounded-2xl flex items-center justify-center shrink-0">
-              <ShieldAlert size={24} />
+               <ShieldAlert size={24} />
             </div>
             <div>
               <p className="text-xs font-black uppercase tracking-widest">Database Sync Alert</p>
               <p className="text-sm font-bold opacity-80">{error}</p>
             </div>
           </div>
-          <button 
-            onClick={fetchData}
-            className="px-6 py-3 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 transition-all"
-          >
-            Retry Connection
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowSqlHelper(true)}
+              className="px-5 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all whitespace-nowrap"
+            >
+              Show SQL Resolution
+            </button>
+            <button 
+              onClick={fetchData}
+              className="px-5 py-3 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 transition-all whitespace-nowrap"
+            >
+              Retry Connection
+            </button>
+          </div>
         </motion.div>
       )}
 
@@ -384,34 +638,42 @@ export default function RegistrationAdmin() {
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 mb-6 flex items-center gap-2">
                 <Shield size={14} /> Direct HOD Account Provisioning
               </h3>
-              <form onSubmit={handleRegisterHOD} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">HOD Full Name</label>
-                  <input 
-                    type="text" required placeholder="e.g. Dr. Ramesh P"
-                    value={hodData.name} onChange={e => setHodData({...hodData, name: e.target.value})}
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Choose Username</label>
-                  <input 
-                    type="text" required placeholder="e.g. hod_cs"
-                    value={hodData.username} onChange={e => setHodData({...hodData, username: e.target.value})}
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
-                  <input 
-                    type="password" required placeholder="••••••••"
-                    value={hodData.password} onChange={e => setHodData({...hodData, password: e.target.value})}
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Department</label>
-                  <div className="flex gap-2">
+              <form onSubmit={handleRegisterHOD} className="space-y-6">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">HOD Full Name</label>
+                    <input 
+                      type="text" required placeholder="e.g. Dr. Ramesh P"
+                      value={hodData.name} onChange={e => setHodData({...hodData, name: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Choose Username</label>
+                    <input 
+                      type="text" required placeholder="e.g. hod_cs"
+                      value={hodData.username} onChange={e => setHodData({...hodData, username: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mobile Number (Optional)</label>
+                    <input 
+                      type="tel" placeholder="e.g. 9876543210"
+                      value={hodData.mobile} onChange={e => setHodData({...hodData, mobile: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
+                    <input 
+                      type="password" required placeholder="••••••••"
+                      value={hodData.password} onChange={e => setHodData({...hodData, password: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Department</label>
                     <select 
                       value={hodData.department} onChange={e => setHodData({...hodData, department: e.target.value})}
                       className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
@@ -420,14 +682,25 @@ export default function RegistrationAdmin() {
                         <option key={dep} value={dep}>{dep}</option>
                       ))}
                     </select>
-                    <button 
-                      type="submit"
-                      disabled={actioning === 'register_hod'}
-                      className="h-12 px-6 bg-blue-700 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center disabled:opacity-50"
-                    >
-                      {actioning === 'register_hod' ? <Loader2 className="animate-spin" size={18} /> : <ChevronRight size={20} />}
-                    </button>
                   </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-slate-100">
+                  <button 
+                    type="submit"
+                    disabled={actioning === 'register_hod'}
+                    className="h-12 px-8 bg-blue-700 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-xs font-black uppercase tracking-widest"
+                  >
+                    {actioning === 'register_hod' ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} /> Registering HOD...
+                      </>
+                    ) : (
+                      <>
+                        <Shield size={16} /> Provision HOD Account
+                      </>
+                    )}
+                  </button>
                 </div>
               </form>
             </div>
@@ -447,63 +720,77 @@ export default function RegistrationAdmin() {
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-6 flex items-center gap-2">
                 <UserPlus size={14} /> Quick Volunteer Registration
               </h3>
-              <form onSubmit={handleRegister} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
-                  <input 
-                    type="text" required placeholder="e.g. Rahul K"
-                    value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})}
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mobile Number</label>
-                  <input 
-                    type="tel" required placeholder="e.g. 9876543210"
-                    value={regData.mobile} onChange={e => setRegData({...regData, mobile: e.target.value})}
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Unit Number</label>
-                  <input 
-                    type="text" required placeholder="e.g. 36"
-                    value={regData.unit} onChange={e => setRegData({...regData, unit: e.target.value})}
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Desired Username</label>
-                  <input 
-                    type="text" required placeholder="e.g. rahul36"
-                    value={regData.username} onChange={e => setRegData({...regData, username: e.target.value})}
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password & Dept</label>
-                  <div className="flex gap-2">
+              <form onSubmit={handleRegister} className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
                     <input 
-                      type="password" required placeholder="••••••••"
-                      value={regData.password} onChange={e => setRegData({...regData, password: e.target.value})}
+                      type="text" required placeholder="e.g. Rahul K"
+                      value={regData.name} onChange={e => setRegData({...regData, name: e.target.value})}
                       className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mobile Number</label>
+                    <input 
+                      type="tel" required placeholder="e.g. 9876543210"
+                      value={regData.mobile} onChange={e => setRegData({...regData, mobile: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Unit Number</label>
+                    <input 
+                      type="text" required placeholder="e.g. 36"
+                      value={regData.unit} onChange={e => setRegData({...regData, unit: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Desired Username</label>
+                    <input 
+                      type="text" required placeholder="e.g. rahul36"
+                      value={regData.username} onChange={e => setRegData({...regData, username: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Department</label>
                     <select 
                       value={regData.department} onChange={e => setRegData({...regData, department: e.target.value})}
-                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs shrink"
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
                     >
                       {['English', 'Hindi', 'Malayalam', 'Commerce', 'Physics', 'Chemistry', 'Economics', 'Computer Science', 'Electronics', 'Botany', 'Zoology', 'Mathematics', 'History'].map(dep => (
                         <option key={dep} value={dep}>{dep}</option>
                       ))}
                     </select>
-                    <button 
-                      type="submit"
-                      disabled={actioning === 'register'}
-                      className="h-12 px-6 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all flex items-center justify-center disabled:opacity-50 shrink-0"
-                    >
-                      {actioning === 'register' ? <Loader2 className="animate-spin" size={18} /> : <ChevronRight size={20} />}
-                    </button>
                   </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="w-full sm:w-1/3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
+                    <input 
+                      type="password" required placeholder="••••••••"
+                      value={regData.password} onChange={e => setRegData({...regData, password: e.target.value})}
+                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-xs"
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={actioning === 'register'}
+                    className="h-12 px-8 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-xs font-black uppercase tracking-widest self-end"
+                  >
+                    {actioning === 'register' ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} /> Direct registering...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={16} /> Complete Direct Registration
+                      </>
+                    )}
+                  </button>
                 </div>
               </form>
             </div>
@@ -630,7 +917,11 @@ export default function RegistrationAdmin() {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Unit {u.unit}</span>
+                       {u.role === 'hod' ? (
+                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">No Unit (Dept Head)</span>
+                       ) : (
+                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Unit {u.unit}</span>
+                       )}
                        {(u as any).department && (
                          <span className="block text-[9px] font-bold text-blue-600 uppercase">{(u as any).department}</span>
                        )}

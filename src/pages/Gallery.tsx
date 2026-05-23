@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, X, ZoomIn, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
 

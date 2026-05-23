@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { MapPin, User, CheckCircle2, AlertCircle, Loader2, ChevronRight } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
 import { Program } from '@/src/pages/types';

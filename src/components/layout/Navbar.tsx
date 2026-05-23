@@ -64,31 +64,55 @@ export default function Navbar() {
     { name: 'Gallery', href: '/gallery', icon: Image },
   ];
 
-  const navItems = isLoggedIn ? [...allNavItems] : [...publicNavItems];
+  let navItems = [...publicNavItems];
 
-  if (isLoggedIn && isAdmin) {
-    navItems.push({ name: 'Admin', href: '/admin', icon: User });
+  if (isLoggedIn) {
+    if (role === 'principal') {
+      navItems = [
+        { name: 'Home', href: '/', icon: Home },
+        { name: 'Principal Panel', href: '/principal', icon: GraduationCap },
+        { name: 'Announcements', href: '/announcements', icon: Bell },
+        { name: 'Gallery', href: '/gallery', icon: Image },
+        { name: 'Alumni', href: '/alumni', icon: GraduationCap },
+      ];
+    } else if (role === 'hod') {
+      navItems = [
+        { name: 'Home', href: '/', icon: Home },
+        { name: 'HOD Panel', href: '/hod', icon: GraduationCap },
+        { name: 'Announcements', href: '/announcements', icon: Bell },
+        { name: 'Gallery', href: '/gallery', icon: Image },
+      ];
+    } else if (role === 'admin') {
+      navItems = [
+        { name: 'Home', href: '/', icon: Home },
+        { name: 'Admin Panel', href: '/admin', icon: User },
+        { name: 'Announcements', href: '/announcements', icon: Bell },
+        { name: 'Gallery', href: '/gallery', icon: Image },
+      ];
+    } else {
+      navItems = [...allNavItems];
+    }
   }
 
   return (
     <nav className="sticky top-0 z-[100] px-4 py-4 md:px-8 md:py-6">
       <div className="max-w-7xl mx-auto">
         <div className="glass shadow-2xl shadow-slate-200/40 rounded-[2rem] px-4 md:px-8 h-20 md:h-24 flex items-center justify-between border border-white/50">
-          <div className="flex items-center space-x-4">
-            <Link to="/" className="flex-shrink-0 flex items-center gap-4 group">
-              <div className="flex items-center space-x-2.5 transition-transform group-hover:scale-105 duration-500">
-                <div className="w-12 h-12 md:w-14 md:h-14 bg-white rounded-2xl flex items-center justify-center shadow-2xl border-2 border-white p-1.5 z-20">
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center gap-2 sm:gap-4 group">
+              <div className="flex items-center -space-x-3.5 sm:-space-x-4 transition-transform group-hover:scale-105 duration-500">
+                <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 p-1 md:p-1.5 z-20">
                   <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="College Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
-                <div className="w-12 h-12 md:w-14 md:h-14 bg-white rounded-2xl flex items-center justify-center shadow-2xl border-2 border-white p-1.5 z-10">
+                <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 p-1 md:p-1.5 z-10">
                   <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" alt="NSS Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
               </div>
-              <div className="flex flex-col justify-center items-center text-center select-none">
-                <h1 className="text-sm sm:text-base md:text-xl lg:text-2xl font-black tracking-tighter leading-none italic uppercase text-slate-900">
-                  NSS <span className="text-brand-600">COLLEGE</span> <span className="text-slate-400/80">OTTAPALAM</span>
+              <div className="flex flex-col justify-center items-start text-left select-none">
+                <h1 className="text-[10px] min-[360px]:text-xs sm:text-base md:text-xl lg:text-2xl font-black tracking-tighter leading-none italic uppercase text-slate-900 transition-all">
+                  NSS <span className="text-brand-600">COLLEGE</span> <span className="text-slate-500/80">OTTAPALAM</span>
                 </h1>
-                <p className="text-slate-400 text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] md:tracking-[0.35em] mt-1 opacity-60">
+                <p className="text-slate-400 text-[6px] sm:text-[9px] font-black uppercase tracking-[0.05em] sm:tracking-[0.25em] md:tracking-[0.35em] mt-0.5 sm:mt-1 opacity-60">
                   NSS UNITS 36 & 94
                 </p>
               </div>

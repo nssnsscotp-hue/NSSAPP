@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   Users, CheckCircle, GraduationCap, Download, Search, 
   LogOut, Shield, ArrowUpDown, Filter, BookOpen, Loader2 

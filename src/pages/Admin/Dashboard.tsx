@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { 
   Users, Bell, ShieldAlert, Heart, Trophy, BarChart3, Home,
   Plus, Settings, CheckCircle, XCircle, Loader2, Calendar, FolderOpen,
-  Image as ImageIcon, Contact, GraduationCap, HelpCircle, Database, Trash2
+  Image as ImageIcon, Contact, GraduationCap, HelpCircle, Database, Trash2,
+  ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
@@ -25,6 +27,7 @@ import HomeArrivalAdmin from './HomeArrivalAdmin';
 type AdminTab = 'overview' | 'highlights' | 'announcements' | 'complaints' | 'attendance' | 'volunteers' | 'quiz' | 'gallery' | 'alumni' | 'blood' | 'ids' | 'arrival' | 'storage';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [totalFiles, setTotalFiles] = useState(6);
   const [usedMB, setUsedMB] = useState(25.9);
@@ -137,6 +140,16 @@ export default function AdminDashboard() {
               <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none">Admin Hub</h1>
               <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">Units 36 & 94</p>
             </div>
+          </div>
+
+          <div className="mb-6">
+            <button
+              onClick={() => navigate('/')}
+              className="w-full h-11 bg-white/5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 text-white border border-white/10 rounded-xl px-4 flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+              <span>Back to Home</span>
+            </button>
           </div>
           
           <h2 className="hidden md:block text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Management</h2>
