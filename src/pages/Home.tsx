@@ -6,7 +6,8 @@ import {
   Loader2, BarChart3, Library, GraduationCap, Star, Flame, ArrowRight, 
   Instagram, MessageCircle, ExternalLink, HelpCircle, ChevronDown, 
   HeartHandshake, ChevronRight, ShieldCheck, Award, Info, BookOpen,
-  Sparkles, Check, CheckCircle2, Globe, ArrowUpRight, Smartphone, Monitor
+  Sparkles, Check, CheckCircle2, Globe, ArrowUpRight, Smartphone, Monitor,
+  Droplets, Activity
 } from 'lucide-react';
 import { Highlight } from '@/src/pages/types';
 import { cn } from '@/src/lib/utils';
@@ -461,6 +462,130 @@ export default function Home() {
             </motion.section>
           )}
         </AnimatePresence>
+
+        {/* AMRIT BLOOD BANK SPOTLIGHT BANNER/CARD */}
+        <section id="amrit-blood-bank-card" className="relative bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl shadow-red-600/10 overflow-hidden group">
+          {/* Subtle background glows and graphic accents */}
+          <div className="absolute top-0 right-0 w-[50%] h-[150%] bg-gradient-to-tr from-white/10 to-transparent -z-10 translate-x-[20%] -translate-y-[20%] blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-1/2 -left-1/4 w-96 h-96 bg-red-500/20 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-8 right-8 text-white/5 font-mono text-9xl font-black select-none pointer-events-none uppercase tracking-tighter">
+            AMRIT
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+            {/* Left side info block */}
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-black uppercase tracking-[0.15em] mx-auto lg:mx-0">
+                <span className="w-2 h-2 bg-red-400 rounded-full animate-ping" />
+                <span className="text-white">🔴 AMRIT COOPERATIVE INITIATIVE</span>
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight leading-none italic">
+                  Amrit Blood Bank <br />
+                  <span className="text-red-100 font-extrabold not-italic text-2xl sm:text-3xl tracking-normal capitalize">Secure Emergency Donor Pool</span>
+                </h2>
+                <p className="text-red-50 text-xs sm:text-sm md:text-base leading-relaxed font-semibold max-w-2xl mx-auto lg:mx-0">
+                  A private, student-led life protection framework coordinated by National Service Scheme Units 36 and 94. We maintain an immediate-response blood directory for Ottapalam Taluk Hospital and local emergencies, assuring absolute donor credential shielding.
+                </p>
+              </div>
+
+              {/* Three key pillars */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center gap-3">
+                  <ShieldCheck size={20} className="text-red-200 shrink-0" />
+                  <div className="text-left">
+                    <span className="text-[10px] font-black uppercase tracking-wide block text-white">Full Privacy</span>
+                    <span className="text-[9px] font-semibold text-red-200 block">Shielded Directory</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center gap-3">
+                  <Activity size={20} className="text-red-200 shrink-0 border-none" />
+                  <div className="text-left">
+                    <span className="text-[10px] font-black uppercase tracking-wide block text-white">Direct Alerts</span>
+                    <span className="text-[9px] font-semibold text-red-200 block">Immediate Broadcast</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center gap-3">
+                  <Award size={20} className="text-red-200 shrink-0" />
+                  <div className="text-left">
+                    <span className="text-[10px] font-black uppercase tracking-wide block text-white">Grade-A Hours</span>
+                    <span className="text-[9px] font-semibold text-red-200 block">NSS Certified Points</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
+                <Link
+                  to="/bloodbank"
+                  className="w-full sm:w-auto h-14 px-8 bg-white text-red-600 hover:bg-red-50 font-black text-xs uppercase tracking-widest rounded-2xl transition duration-300 flex items-center justify-center gap-2 shadow-lg shadow-black/10 hover:translate-y-[-2px] cursor-pointer"
+                >
+                  <Heart size={14} className="fill-current text-red-600 animate-pulse" />
+                  <span>Join as Blood Donor</span>
+                </Link>
+                <Link
+                  to="/bloodbank"
+                  className="w-full sm:w-auto h-14 px-8 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-extrabold text-xs uppercase tracking-widest rounded-2xl transition duration-300 flex items-center justify-center gap-2 hover:translate-y-[-2px] cursor-pointer"
+                >
+                  <Droplets size={14} className="text-white" />
+                  <span>Emergency Request Blood</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Right side interactive graphic deck */}
+            <div className="lg:col-span-5 flex justify-center relative">
+              <div className="absolute -inset-4 bg-red-400/20 rounded-[2.5rem] blur-2xl opacity-50 group-hover:opacity-75 transition duration-500 pointer-events-none" />
+              
+              <div className="relative bg-white/5 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 shadow-xl max-w-sm w-full space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono tracking-widest text-red-200/80 font-black uppercase">GRID STATUS</span>
+                  <span className="flex items-center gap-1 bg-red-500/30 px-2 py-0.5 rounded text-[8.5px] font-black tracking-wider uppercase border border-red-500/20">
+                    <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" /> Active Matcher
+                  </span>
+                </div>
+
+                {/* Blood Grid Visual */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'A+', active: true },
+                    { label: 'B+', active: true },
+                    { label: 'O+', active: true },
+                    { label: 'AB+', active: true },
+                    { label: 'A-', active: true },
+                    { label: 'B-', active: false },
+                    { label: 'O-', active: true },
+                    { label: 'AB-', active: false }
+                  ].map((bg, index) => (
+                    <div 
+                      key={index}
+                      className={cn(
+                        "aspect-square rounded-2xl border flex flex-col items-center justify-center p-2 transition-all duration-300 cursor-default select-none",
+                        bg.active 
+                          ? "bg-white/10 hover:bg-red-500/40 border-white/20 hover:border-red-400 text-white scale-100 hover:scale-105 shadow-md shadow-black/5"
+                          : "bg-black/10 border-white/5 text-white/40 opacity-40"
+                      )}
+                    >
+                      <Droplets size={16} className={cn("mb-1", bg.active ? "text-red-300" : "text-white/25")} />
+                      <span className="text-[10px] font-black tracking-tight">{bg.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-red-900/30 border border-red-500/20 p-4 rounded-2xl space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={14} className="text-red-300" />
+                    <span className="text-[9px] font-black uppercase tracking-wider text-red-200">Ottapalam Community Registry</span>
+                  </div>
+                  <p className="text-[10px] text-red-100/90 leading-normal font-semibold">
+                    Our platform automatically matches requests against this secure pool under strict privacy policies.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Double Column Feature Grid: Interactive logs on left + Official notice feed on right */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

@@ -38,7 +38,7 @@ export default function Gallery() {
   useEffect(() => { fetchGallery(); }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 italic">
+    <div className="min-h-screen bg-slate-50 py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <div className="inline-flex p-3 bg-emerald-100 text-emerald-600 rounded-2xl mb-4">

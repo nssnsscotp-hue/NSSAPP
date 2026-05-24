@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Award, Trophy, Calendar, CheckCircle2, Star, Shield, 
   HelpCircle, Download, ExternalLink, RefreshCw, Copy, Check, 
-  Printer, X, Activity, BookOpen, Clock, Heart, FileText
+  Printer, X, Activity, BookOpen, Clock, Heart, FileText,
+  Camera, Upload, Loader2, AlertCircle
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
@@ -12,6 +13,7 @@ import {
 } from 'recharts';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
+import { getProfilePhoto, saveProfilePhoto } from '@/src/lib/firebaseClient';
 
 interface QuizAttempt {
   id: string;
@@ -31,6 +33,56 @@ interface VolunteerProfile {
   role: string;
   points: number;
   joined_at?: string;
+  avatar_url?: string | null;
+}
+
+/**
+ * Compresses an image file client-side using Canvas API.
+ * Resizes the image to fit within maxWidth / maxHeight limits
+ * and returns a compressed JPEG Base64 Data URL.
+ */
+function compressImageToBase64(file: File, maxWidth = 250, maxHeight = 250, quality = 0.65): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate aspect-ratio adaptive scaling
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error("Failed to initialize canvas render context"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(new Error("Error loading image for compression: " + String(err)));
+    };
+    reader.onerror = (err) => reject(new Error("Error reading file stream: " + String(err)));
+  });
 }
 
 export default function Profile() {
@@ -52,10 +104,56 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'certificates'>('overview');
   const certPrintRef = useRef<HTMLDivElement>(null);
 
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSuccessMsg, setPhotoSuccessMsg] = useState<string | null>(null);
+
   const storedUser = localStorage.getItem('user') || '';
   const storedName = localStorage.getItem('name') || 'Volunteer';
   const storedUserId = localStorage.getItem('userId') || '';
   const storedUnit = localStorage.getItem('unit') || 'Unit 36 & 94';
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    // Validate file type
+    if (!selectedFile.type.startsWith('image/')) {
+      setPhotoError("Only image files (.jpg, .png, etc.) are allowed.");
+      setPhotoSuccessMsg(null);
+      return;
+    }
+
+    setPhotoUploading(true);
+    setPhotoError(null);
+    setPhotoSuccessMsg(null);
+
+    try {
+      // 1. Compress Image client-side directly to Base64
+      console.log(`Original image size: ${(selectedFile.size / 1024).toFixed(1)} KB`);
+      const base64Data = await compressImageToBase64(selectedFile, 250, 250, 0.65);
+      const compressedSizeKb = (base64Data.length * 0.75 / 1024).toFixed(1);
+      console.log(`Compressed base64 size: ${compressedSizeKb} KB`);
+
+      const username = profile?.username || storedUser;
+
+      if (!username) {
+        throw new Error("Must be signed in to upload a profile picture.");
+      }
+
+      // Save the picture URL (base64 encoded jpeg) under the 'profiles' collection in the Firestore Database
+      await saveProfilePhoto(username, base64Data);
+
+      // Successfully updated profile picture state
+      setProfile(prev => prev ? { ...prev, avatar_url: base64Data } : null);
+      setPhotoSuccessMsg(`Profile picture compressed and stored inside Firebase Database! Size reduced from ${(selectedFile.size / 1024).toFixed(1)} KB down to ${compressedSizeKb} KB.`);
+    } catch (err: any) {
+      console.error("Avatar compression/database save failed:", err);
+      setPhotoError(err.message || "Save failed. Please check connection.");
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   const sqlBlueprint = `-- EXECUTE THIS IN PUBLIC SQL EDITOR ON SUPABASE:
 
@@ -146,6 +244,17 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
           }
         } catch (err) {
           console.warn("Could not load database profile, running local mode:", err);
+        }
+      }
+      // Fetch avatar URL from Firestore profiles collection
+      if (activeProfile.username) {
+        try {
+          const photoUrl = await getProfilePhoto(activeProfile.username);
+          if (photoUrl) {
+            activeProfile.avatar_url = photoUrl;
+          }
+        } catch (photoErr) {
+          console.warn("Could not load Firestore profile photo:", photoErr);
         }
       }
       setProfile(activeProfile);
@@ -444,13 +553,79 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
         {/* Top Header Card */}
         <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-8">
           <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="relative">
-              <div className="w-24 h-24 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-[2rem] flex items-center justify-center text-white text-4xl font-black shadow-lg shadow-brand-500/20">
-                {profile?.full_name?.charAt(0) || 'V'}
-              </div>
-              <span className="absolute bottom-1 right-1 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-white shadow-xl" title="Verified Volunteer">
-                <Shield size={14} className="fill-current" />
-              </span>
+            <div className="flex flex-col items-center sm:items-start gap-4">
+              <motion.div 
+                className="relative group"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                {profile?.avatar_url ? (
+                  <img 
+                    src={profile.avatar_url} 
+                    alt={profile?.full_name} 
+                    className="w-24 h-24 rounded-[2rem] object-cover border-4 border-indigo-100 shadow-lg shadow-brand-500/10"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-24 h-24 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-[2rem] flex items-center justify-center text-white text-4xl font-black shadow-lg shadow-brand-500/20 select-none">
+                    {profile?.full_name?.charAt(0) || 'V'}
+                  </div>
+                )}
+                
+                {/* Upload Hover Overlay */}
+                <label className="absolute inset-0 bg-slate-900/60 rounded-[2rem] flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-center p-2">
+                  {photoUploading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-5 h-5 mb-1" />
+                      <span className="text-[8px] font-black uppercase tracking-wider">Change Photo</span>
+                    </>
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handlePhotoUpload} 
+                    className="hidden" 
+                    disabled={photoUploading}
+                  />
+                </label>
+
+                <span className="absolute bottom-1 right-1 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-white shadow-xl" title="Verified Volunteer">
+                  <Shield size={14} className="fill-current" />
+                </span>
+              </motion.div>
+              
+              {/* Profile Photo Upload Alerts Context */}
+              <AnimatePresence>
+                {(photoError || photoSuccessMsg || photoUploading) && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="text-center sm:text-left max-w-xs space-y-1"
+                  >
+                    {photoUploading && (
+                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5 justify-center sm:justify-start">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Uploading photo...
+                      </span>
+                    )}
+                    {photoError && (
+                      <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider flex items-center gap-1 justify-center sm:justify-start">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {photoError}
+                      </span>
+                    )}
+                    {photoSuccessMsg && (
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1 justify-center sm:justify-start">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        {photoSuccessMsg}
+                      </span>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             
             <div className="text-center md:text-left">
@@ -564,6 +739,53 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
                 <div>
                   <h3 className="text-lg font-black uppercase tracking-widest text-slate-400">Volunteer Particulars</h3>
                   <p className="text-slate-500 text-xs">Primary state identities from NSS enrollment database.</p>
+                </div>
+
+                {/* Profile Photo Upload Widget for Easy Discovery & Mobile Access */}
+                <div className="p-5 bg-slate-50/70 rounded-3xl border border-slate-200/50 flex flex-col items-center gap-3">
+                  <motion.div
+                    whileHover={{ scale: 1.08 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="relative shrink-0 select-none cursor-pointer"
+                  >
+                    {profile?.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt="Avatar Preview" 
+                        className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-sm"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-slate-200 text-slate-500 rounded-2xl flex items-center justify-center text-xl font-bold uppercase">
+                        {profile?.full_name?.charAt(0) || 'V'}
+                      </div>
+                    )}
+                  </motion.div>
+                  <div className="text-center">
+                    <h4 className="text-xs font-bold text-slate-800">Official Profile Photo</h4>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Stores to Firebase Database</p>
+                  </div>
+                  
+                  <label className="w-full h-10 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                    {photoUploading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Photo</span>
+                      </>
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handlePhotoUpload} 
+                      className="hidden" 
+                      disabled={photoUploading}
+                    />
+                  </label>
                 </div>
 
                 <div className="divide-y divide-slate-100">

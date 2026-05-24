@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "ProfilePhoto": {
+      "title": "Profile Photo",
+      "description": "NSS Volunteers' profile photos stored in the Firebase database",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Username of the volunteer"
+        },
+        "avatar_url": {
+          "type": "string",
+          "description": "Permanent URL of the profile picture in Firebase storage"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the picture was last updated"
+        }
+      },
+      "required": ["username", "avatar_url", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "profiles": {
+      "schema": "ProfilePhoto",
+      "description": "Collocated profiles matching users for picture sync"
+    }
+  }
+}

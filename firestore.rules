@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (The catch-all default-deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Profiles collection rules
+    match /profiles/{username} {
+      // Allowing public reads so volunteer profile pictures are visible when listing/rendering profiles or ID cards.
+      allow read: if true;
+
+      // Restricting writes only to authenticated users matching the identity schema
+      allow create: if isSignedIn() && isValidProfile(request.resource.data) && username == request.resource.data.username;
+      allow update: if isSignedIn() && isValidProfile(request.resource.data) && username == request.resource.data.username
+                    && (incoming().diff(existing()).affectedKeys().hasOnly(['avatar_url', 'updatedAt', 'username']));
+      allow delete: if false;
+    }
+
+    // Reuseable, hardened helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidProfile(data) {
+      return data.username is string 
+        && data.username.size() >= 1 
+        && data.username.size() <= 100
+        && data.avatar_url is string 
+        && data.avatar_url.size() >= 5 
+        && data.avatar_url.size() <= 250000
+        && data.updatedAt is string 
+        && data.updatedAt.size() <= 100;
+    }
+  }
+}
