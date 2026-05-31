@@ -5,6 +5,7 @@ import { cn } from '@/src/lib/utils';
 import { GAS_URLS } from '@/src/lib/constants';
 import { supabase } from '@/src/lib/supabase';
 import { Link } from 'react-router-dom';
+import BackButton from '../components/layout/BackButton';
 
 export default function VolunteerID() {
   const storedUser = localStorage.getItem('user') || '';
@@ -99,12 +100,7 @@ export default function VolunteerID() {
         
         {/* Navigation / Back links */}
         <div className="flex items-center justify-between no-print">
-          <Link 
-            to="/" 
-            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition"
-          >
-            <ArrowLeft size={14} /> Back to dashboard
-          </Link>
+          <BackButton />
           <div className="flex items-center gap-2 text-right">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Secure State Verified</span>

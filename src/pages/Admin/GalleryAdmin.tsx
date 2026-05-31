@@ -14,6 +14,68 @@ import firebaseConfig from '../../../firebase-applet-config.json';
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const storage = getStorage(app);
 
+// Client-side image compression utility to optimize Firebase Storage storage and bandwidth
+const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.75): Promise<File> => {
+  return new Promise((resolve) => {
+    if (file.type === 'image/gif') {
+      return resolve(file);
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return resolve(file);
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const targetType = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: targetType,
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          targetType,
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 interface GalleryItem {
   id: string;
   url: string;
@@ -66,7 +128,18 @@ export default function GalleryAdmin() {
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.warn('Supabase gallery table read failed, attempting server local registry fallback:', error.message);
+        const res = await fetch('/api/public-gallery');
+        if (!res.ok) throw new Error("Local and cloud storage are both unreachable.");
+        const resData = await res.json();
+        if (resData.success && resData.list) {
+          setItems(resData.list);
+          return;
+        }
+        throw new Error("Local database structure invalid.");
+      }
+      
       if (data) {
         setItems(data.map(x => ({ 
           id: x.id, 
@@ -76,8 +149,17 @@ export default function GalleryAdmin() {
           category: x.category 
         })));
       }
-    } catch (err) { 
-      console.error('Gallery fetch failed', err); 
+    } catch (err: any) { 
+      console.error('Core gallery fetch failed, attempting absolute local collection fallback:', err); 
+      try {
+        const res = await fetch('/api/public-gallery');
+        const resData = await res.json();
+        if (resData.success && resData.list) {
+          setItems(resData.list);
+        }
+      } catch (fallbackError) {
+        console.error('Absolute backup local database retrieve failed', fallbackError);
+      }
     } finally { 
       setLoading(false); 
     }
@@ -151,11 +233,13 @@ export default function GalleryAdmin() {
       }
 
       setSubmitting(true);
-      setUploadProgressMsg('Uploading photo to cloud storage... (please wait)');
+      setUploadProgressMsg('Compressing media asset for speed and smaller footprints... (please wait)');
 
       try {
+        const compressedFile = await compressImage(file, 1080, 1080, 0.75);
+        setUploadProgressMsg('Uploading compressed photo to cloud storage... (please wait)');
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", compressedFile);
         formData.append("folder", "gallery_photos");
 
         const response = await fetch('/api/firebase/upload', {
@@ -194,7 +278,7 @@ export default function GalleryAdmin() {
       setSubmitting(true);
     }
 
-    // Now insert path into Supabase gallery table
+    // Now insert path into Supabase gallery table (falls back to local backend index if missing)
     try {
       // Ensure session for RLS
       const { data: { session } } = await supabase.auth.getSession();
@@ -209,7 +293,24 @@ export default function GalleryAdmin() {
           category: newItem.category
         }]);
       
-      if (error) throw error;
+      if (error) {
+        console.warn("Supabase gallery insert failed, executing local metadata routing:", error.message);
+        const localRes = await fetch('/api/public-gallery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: resolvedUrl,
+            title: newItem.title.trim(),
+            date: newItem.date,
+            category: newItem.category
+          })
+        });
+
+        if (!localRes.ok) {
+          const localErr = await localRes.json();
+          throw new Error(localErr.error || "Local cache write failed.");
+        }
+      }
 
       setStatus({ type: 'success', msg: "Success! Image published to activity gallery." });
       setNewItem({ url: '', title: '', date: new Date().toISOString().split('T')[0], category: 'Activity' });
@@ -219,7 +320,32 @@ export default function GalleryAdmin() {
       }
       await fetchGallery();
     } catch (err: any) { 
-      console.error("Error inserting record:", err);
+      console.error("Error inserting record, starting deep backup writer:", err);
+      try {
+        const localRes = await fetch('/api/public-gallery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: resolvedUrl,
+            title: newItem.title.trim(),
+            date: newItem.date,
+            category: newItem.category
+          })
+        });
+        if (localRes.ok) {
+          setStatus({ type: 'success', msg: "Success! Image published to activity gallery (secure local storage fallback)." });
+          setNewItem({ url: '', title: '', date: new Date().toISOString().split('T')[0], category: 'Activity' });
+          setFile(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+          await fetchGallery();
+          return;
+        }
+      } catch (fallbackErr: any) {
+        console.error("Both cloud database and local fallback writes failed:", fallbackErr);
+      }
+      
       setStatus({ 
         type: 'error', 
         msg: `Failed to register image in activity index: ${err.message || 'Database error.'}` 
@@ -263,18 +389,39 @@ export default function GalleryAdmin() {
         }
       }
 
-      // Drop from Supabase gallery
-      let { error } = await supabase
-        .from('gallery')
-        .delete()
-        .eq('id', id);
+      // Drop from Supabase gallery (with local backup fallback delete)
+      const isLocalItem = String(id).startsWith('local-') || String(id).startsWith('preseeded-');
       
-      if (error || isNumeric) {
-        if (isNumeric) {
-          await supabase.from('gallery').delete().eq('id', numericId);
-          await supabase.from('gallery').delete().eq('row', numericId);
+      if (isLocalItem) {
+        const localRes = await fetch(`/api/public-gallery/${id}`, {
+          method: 'DELETE'
+        });
+        if (!localRes.ok) {
+          throw new Error("Failed to delete from local cache.");
         }
-        await supabase.from('gallery').delete().eq('row', id);
+      } else {
+        try {
+          let { error } = await supabase
+            .from('gallery')
+            .delete()
+            .eq('id', id);
+          
+          if (error) {
+            console.warn("Supabase gallery table delete failed, executing local metadata delete fallback:", error.message);
+            const localRes = await fetch(`/api/public-gallery/${id}`, { method: 'DELETE' });
+            if (!localRes.ok) throw new Error("Local fallback delete failed too.");
+          } else {
+            if (isNumeric) {
+              await supabase.from('gallery').delete().eq('id', numericId);
+              await supabase.from('gallery').delete().eq('row', numericId);
+            }
+            await supabase.from('gallery').delete().eq('row', id);
+          }
+        } catch (supabaseErr) {
+          console.warn("Supabase database error during delete, attempting local delete fallback:", supabaseErr);
+          const localRes = await fetch(`/api/public-gallery/${id}`, { method: 'DELETE' });
+          if (!localRes.ok) throw new Error("Local fallback deletion failed.");
+        }
       }
       
       setStatus({ type: 'success', msg: "Activity gallery card removed safely." });

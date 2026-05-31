@@ -4,6 +4,7 @@ import { Search, FileText, CheckCircle2, Loader2, ClipboardList, Phone, User, Ta
 import { GAS_URLS } from '@/src/lib/constants';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 export default function ComplaintPortal() {
   const [activeMode, setActiveMode] = useState<'file' | 'track'>('file');
@@ -452,8 +453,11 @@ export default function ComplaintPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-gradient-to-r from-[#002c6c] to-[#0051c3] text-white py-12 px-4 shadow-lg text-center">
+    <div className="min-h-screen bg-slate-50 animate-fade-in">
+      <div className="bg-gradient-to-r from-[#002c6c] to-[#0051c3] text-white py-12 px-4 shadow-lg text-center relative">
+        <div className="max-w-3xl mx-auto px-4 mb-4 flex justify-start">
+          <BackButton className="bg-white/10 text-white border-white/20 hover:bg-white/20 hover:text-white" />
+        </div>
         <motion.div
            initial={{ y: -20, opacity: 0 }}
            animate={{ y: 0, opacity: 1 }}

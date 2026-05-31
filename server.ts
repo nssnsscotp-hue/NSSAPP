@@ -128,8 +128,11 @@ async function startServer() {
       const cleanName = `${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}.${fileExt}`;
       const fileRef = ref(activeStorage, `${folderPath}/${cleanName}`);
 
+      // Convert Node.js Buffer explicitly to a clean Uint8Array for server-side compatibility with the client SDK
+      const dataBytes = new Uint8Array(file.buffer);
+
       // Upload the file buffer to Firebase Storage on the server side
-      await uploadBytes(fileRef, file.buffer, {
+      await uploadBytes(fileRef, dataBytes, {
         contentType: file.mimetype
       });
 
@@ -138,7 +141,12 @@ async function startServer() {
 
       res.status(200).json({ success: true, url: downloadUrl });
     } catch (err: any) {
-      console.warn("Firebase Storage upload failed, falling back to local container storage:", err.message || err);
+      const errMsg = err.message || String(err);
+      if (errMsg.includes("storage/unknown") || errMsg.includes("unknown error") || errMsg.includes("storage/unauthorized")) {
+        console.info(`[Storage Router] Firebase Storage bucket is unprovisioned or pending console activation. Routing asset securely to local container storage.`);
+      } else {
+        console.warn("[Storage Router] Firebase Cloud Storage upload failed, falling back to local storage:", errMsg);
+      }
       try {
         const file = req.file;
         if (!file) {
@@ -303,6 +311,301 @@ async function startServer() {
     } catch (err: any) {
       console.error("Delete route error:", err);
       res.status(500).json({ error: "Failed to delete resource entry" });
+    }
+  });
+
+  // Gallery Local Fallback Endpoints (In case Supabase 'gallery' table is missing/pending)
+  const galleryMetadataPath = path.join(uploadDir, "gallery.json");
+  if (!fs.existsSync(galleryMetadataPath)) {
+    fs.writeFileSync(galleryMetadataPath, JSON.stringify([
+      {
+        id: "preseeded-1",
+        url: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&auto=format&fit=crop&q=60",
+        title: "NSS Green Clean Drive Initiative",
+        date: "2026-04-12",
+        category: "Camp"
+      },
+      {
+        id: "preseeded-2",
+        url: "https://images.unsplash.com/photo-1615461066841-6116e61058f4?w=800&auto=format&fit=crop&q=60",
+        title: "Socio-Economic Survey Planning Meeting",
+        date: "2026-05-01",
+        category: "Meeting"
+      }
+    ], null, 2));
+  }
+
+  app.get("/api/public-gallery", (req, res) => {
+    try {
+      const data = fs.readFileSync(galleryMetadataPath, "utf-8");
+      res.json({ success: true, list: JSON.parse(data) });
+    } catch (err: any) {
+      console.error("Local gallery read error:", err);
+      res.status(500).json({ error: "Failed to read local gallery metadata" });
+    }
+  });
+
+  app.post("/api/public-gallery", (req, res) => {
+    try {
+      const { url, title, date, category } = req.body;
+      if (!url || !title) {
+        return res.status(400).json({ error: "URL and Title are required for local gallery." });
+      }
+
+      const list = JSON.parse(fs.readFileSync(galleryMetadataPath, "utf-8"));
+      const newItem = {
+        id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        url,
+        title,
+        date: date || new Date().toISOString().split('T')[0],
+        category: category || "Activity"
+      };
+
+      list.unshift(newItem);
+      fs.writeFileSync(galleryMetadataPath, JSON.stringify(list, null, 2));
+      res.status(201).json({ success: true, item: newItem });
+    } catch (err: any) {
+      console.error("Local gallery write error:", err);
+      res.status(500).json({ error: "Failed to save to local gallery metadata" });
+    }
+  });
+
+  app.delete("/api/public-gallery/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const list = JSON.parse(fs.readFileSync(galleryMetadataPath, "utf-8"));
+      const index = list.findIndex((item: any) => item.id === id);
+
+      if (index === -1) {
+        return res.status(404).json({ error: "Gallery item not found in local cache." });
+      }
+
+      list.splice(index, 1);
+      fs.writeFileSync(galleryMetadataPath, JSON.stringify(list, null, 2));
+      res.json({ success: true, message: "Gallery item removed safely from local registry." });
+    } catch (err: any) {
+      console.error("Local gallery delete error:", err);
+      res.status(500).json({ error: "Failed to delete local gallery item" });
+    }
+  });
+
+  // NSS Blood Donors Local Database Fallback
+  const donorsPath = path.join(uploadDir, "blood_donors.json");
+  if (!fs.existsSync(donorsPath)) {
+    fs.writeFileSync(donorsPath, JSON.stringify([
+      {
+        id: "donor-ps-1",
+        full_name: "Rahul K. S.",
+        blood_group: "O+",
+        mobile: "9446112233",
+        unit: "Unit 36",
+        created_at: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "donor-ps-2",
+        full_name: "Anjana Krishnan",
+        blood_group: "A+",
+        mobile: "8129004455",
+        unit: "Unit 94",
+        created_at: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "donor-ps-3",
+        full_name: "Sidharth Sharma",
+        blood_group: "B+",
+        mobile: "9847006677",
+        unit: "Unit 36",
+        created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "donor-ps-4",
+        full_name: "Fathima N.",
+        blood_group: "O-",
+        mobile: "7012334455",
+        unit: "Unit 94",
+        created_at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "donor-ps-5",
+        full_name: "Abhijith Nair",
+        blood_group: "AB+",
+        mobile: "9090112233",
+        unit: "Unit 36",
+        created_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "donor-ps-6",
+        full_name: "Sneha Prasad",
+        blood_group: "B+",
+        mobile: "9495881122",
+        unit: "Unit 94",
+        created_at: new Date(Date.now() - 12 * 3600 * 1000).toISOString()
+      }
+    ], null, 2));
+  }
+
+  // NSS Blood Emergency Requests Local Database Fallback
+  const bloodRequestsPath = path.join(uploadDir, "blood_requests.json");
+  if (!fs.existsSync(bloodRequestsPath)) {
+    fs.writeFileSync(bloodRequestsPath, JSON.stringify([
+      {
+        id: "req-ps-1",
+        blood_group: "O+",
+        units_required: "2 Units",
+        hospital_venue: "Taluk Hospital, Ottapalam",
+        contact_number: "9845112233",
+        status: "active",
+        created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "req-ps-2",
+        blood_group: "A-",
+        units_required: "1 Unit",
+        hospital_venue: "Valluvanad Hospital, Ottapalam",
+        contact_number: "9447445566",
+        status: "active",
+        created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "req-ps-3",
+        blood_group: "B+",
+        units_required: "3 Units",
+        hospital_venue: "District Hospital, Palakkad",
+        contact_number: "9946881122",
+        status: "resolved",
+        created_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString()
+      }
+    ], null, 2));
+  }
+
+  // Blood Donors Endpoints
+  app.get("/api/blood-donors", (req, res) => {
+    try {
+      const data = fs.readFileSync(donorsPath, "utf-8");
+      res.json({ success: true, list: JSON.parse(data) });
+    } catch (err: any) {
+      console.error("Local donors fetch error:", err);
+      res.status(500).json({ error: "Failed to read local donors directory" });
+    }
+  });
+
+  app.post("/api/blood-donors", (req, res) => {
+    try {
+      const { full_name, blood_group, mobile, unit } = req.body;
+      if (!full_name || !blood_group || !mobile) {
+        return res.status(400).json({ error: "Full Name, Blood Group, and Mobile are required." });
+      }
+
+      const list = JSON.parse(fs.readFileSync(donorsPath, "utf-8"));
+      const newItem = {
+        id: `local-donor-${Date.now()}`,
+        full_name,
+        blood_group,
+        mobile,
+        unit: unit || "Unit 36",
+        created_at: new Date().toISOString()
+      };
+
+      list.unshift(newItem);
+      fs.writeFileSync(donorsPath, JSON.stringify(list, null, 2));
+      res.status(201).json({ success: true, item: newItem });
+    } catch (err: any) {
+      console.error("Local donor register error:", err);
+      res.status(500).json({ error: "Failed to registers donor locally" });
+    }
+  });
+
+  app.delete("/api/blood-donors/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const list = JSON.parse(fs.readFileSync(donorsPath, "utf-8"));
+      const index = list.findIndex((item: any) => item.id === id);
+
+      if (index === -1) {
+        return res.status(404).json({ error: "Donor profile not found." });
+      }
+
+      list.splice(index, 1);
+      fs.writeFileSync(donorsPath, JSON.stringify(list, null, 2));
+      res.json({ success: true, message: "Donor profile removed locally." });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete local donor." });
+    }
+  });
+
+  // Emergency Requests Endpoints
+  app.get("/api/blood-emergency-requests", (req, res) => {
+    try {
+      const data = fs.readFileSync(bloodRequestsPath, "utf-8");
+      res.json({ success: true, list: JSON.parse(data) });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to fetch emergency requests" });
+    }
+  });
+
+  app.post("/api/blood-emergency-requests", (req, res) => {
+    try {
+      const { blood_group, units_required, hospital_venue, contact_number } = req.body;
+      if (!blood_group || !hospital_venue || !contact_number) {
+        return res.status(400).json({ error: "Blood group, venue, and contact are required." });
+      }
+
+      const list = JSON.parse(fs.readFileSync(bloodRequestsPath, "utf-8"));
+      const newItem = {
+        id: `local-req-${Date.now()}`,
+        blood_group,
+        units_required: units_required || "1 Unit",
+        hospital_venue,
+        contact_number,
+        status: "active",
+        created_at: new Date().toISOString()
+      };
+
+      list.unshift(newItem);
+      fs.writeFileSync(bloodRequestsPath, JSON.stringify(list, null, 2));
+      res.status(201).json({ success: true, item: newItem });
+    } catch (err: any) {
+      res.status(500).json({ error: "Failed to broadcast request locally" });
+    }
+  });
+
+  app.patch("/api/blood-emergency-requests/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const list = JSON.parse(fs.readFileSync(bloodRequestsPath, "utf-8"));
+      const reqItem = list.find((item: any) => item.id === id);
+
+      if (!reqItem) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      if (status) {
+        reqItem.status = status;
+      }
+
+      fs.writeFileSync(bloodRequestsPath, JSON.stringify(list, null, 2));
+      res.json({ success: true, item: reqItem });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update emergency request info" });
+    }
+  });
+
+  app.delete("/api/blood-emergency-requests/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const list = JSON.parse(fs.readFileSync(bloodRequestsPath, "utf-8"));
+      const index = list.findIndex((item: any) => item.id === id);
+
+      if (index === -1) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      list.splice(index, 1);
+      fs.writeFileSync(bloodRequestsPath, JSON.stringify(list, null, 2));
+      res.json({ success: true, message: "Emergency request dismissed locally." });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to remove emergency request" });
     }
   });
 

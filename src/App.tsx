@@ -55,13 +55,13 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/announcements" element={<Announcements />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/help" element={<Help />} />
           
           <Route element={<ProtectedRoute />}>
             {/* Protected Volunteer Routes */}
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/sos" element={<SOS />} />
             <Route path="/bloodbank" element={<BloodBank />} />
-            <Route path="/help" element={<Help />} />
             <Route path="/complaints" element={<Complaints />} />
             <Route path="/quiz" element={<QuizSystem />} />
             <Route path="/reports" element={<Reports />} />

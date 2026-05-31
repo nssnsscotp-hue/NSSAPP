@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
 import { getProfilePhoto, saveProfilePhoto } from '@/src/lib/firebaseClient';
+import BackButton from '../components/layout/BackButton';
 
 interface QuizAttempt {
   id: string;
@@ -524,8 +525,11 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 shadow-inner">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 shadow-inner animate-fade-in">
       <div className="max-w-7xl mx-auto space-y-10">
+        <div className="flex justify-start no-print">
+          <BackButton />
+        </div>
         
         {/* Print Only Styles Context */}
         <style dangerouslySetInnerHTML={{__html: `
@@ -656,8 +660,26 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
         </div>
 
         {/* Quick Numbers Bento View */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm">
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.08 }
+            }
+          }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
+        >
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0, y: 15 },
+              visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+            }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm select-none transition-shadow hover:shadow-md cursor-default"
+          >
             <div>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Accum Points</div>
               <div className="text-3xl font-black text-slate-900 mt-1">{profile?.points || 0} pts</div>
@@ -665,9 +687,16 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
             <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center">
               <Trophy size={22} className="fill-current" />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm">
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0, y: 15 },
+              visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+            }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm select-none transition-shadow hover:shadow-md cursor-default"
+          >
             <div>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">General Camp Rank</div>
               <div className="text-3xl font-black text-slate-900 mt-1">#{stats.systemRank}</div>
@@ -675,9 +704,16 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
             <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center">
               <Star size={22} className="fill-current" />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm">
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0, y: 15 },
+              visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+            }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm select-none transition-shadow hover:shadow-md cursor-default"
+          >
             <div>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quizzes Attempted</div>
               <div className="text-3xl font-black text-slate-900 mt-1">{stats.totalQuizzes} / 10</div>
@@ -685,9 +721,16 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
             <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
               <BookOpen size={22} />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm">
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0, y: 15 },
+              visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+            }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm select-none transition-shadow hover:shadow-md cursor-default"
+          >
             <div>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Avg Quiz Correctness</div>
               <div className="text-3xl font-black text-slate-900 mt-1">{stats.averageScorePct}%</div>
@@ -695,8 +738,8 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
             <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center">
               <CheckCircle2 size={22} />
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Tab Selection */}
         <div className="flex border-b border-slate-200">
@@ -839,12 +882,28 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
                 <p className="text-slate-500 text-xs mt-1">Unlock official badges by accumulating points, attending community programs, and completing quizzes.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <motion.div 
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.08 }
+                  }
+                }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
                 {badgesList.map((badge) => (
-                  <div 
+                  <motion.div 
                     key={badge.id}
+                    variants={{
+                      hidden: { opacity: 0, scale: 0.95, y: 15 },
+                      visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+                    }}
+                    whileHover={{ scale: 1.03, y: -4 }}
                     className={cn(
-                      "p-5 rounded-3xl border-2 transition-all flex flex-col justify-between min-h-[160px]",
+                      "p-5 rounded-3xl border-2 transition-all flex flex-col justify-between min-h-[160px] select-none cursor-default",
                       badge.earned 
                         ? cn("bg-white shadow-sm hover:shadow-md", badge.color)
                         : "bg-slate-50 border-dashed border-slate-200 opacity-60"
@@ -867,9 +926,9 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
                     <div className="mt-2 pt-2 border-t border-slate-100/50 text-[8px] font-black uppercase tracking-wider text-slate-400">
                       Criteria: {badge.condition}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </div>
 
           </div>

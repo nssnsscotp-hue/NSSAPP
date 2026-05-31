@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { FileText, Upload, FolderOpen, Loader2, CheckCircle2, ChevronRight, FileCode, Users } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
+import BackButton from '../components/layout/BackButton';
 
 export default function Reports() {
   const [loading, setLoading] = useState(false);
@@ -79,8 +80,11 @@ export default function Reports() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">
       <div className="max-w-4xl mx-auto">
+        <div className="mb-8 flex justify-start">
+          <BackButton />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Info Side */}
           <div className="space-y-8">

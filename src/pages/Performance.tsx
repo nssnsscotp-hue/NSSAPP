@@ -4,6 +4,7 @@ import { Trophy, Target, Award, Calendar, BarChart3, TrendingUp, Star, Loader2, 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
+import BackButton from '../components/layout/BackButton';
 
 export default function PerformanceDashboard() {
   const name = localStorage.getItem('name') || localStorage.getItem('user') || 'Volunteer';
@@ -98,8 +99,11 @@ export default function PerformanceDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 md:py-24">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 md:py-24 animate-fade-in">
       <div className="max-w-7xl mx-auto">
+        <div className="mb-8 flex justify-start">
+          <BackButton />
+        </div>
         {/* Header */}
         <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-10 mb-16 md:mb-24">
           <motion.div

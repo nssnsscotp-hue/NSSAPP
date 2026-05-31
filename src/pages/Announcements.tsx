@@ -5,6 +5,7 @@ import { GAS_URLS } from '@/src/lib/constants';
 import { Announcement } from '@/src/pages/types';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 export default function Announcements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -64,8 +65,11 @@ export default function Announcements() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 animate-fade-in">
       <div className="max-w-4xl mx-auto">
+        <div className="mb-6 flex justify-start no-print">
+          <BackButton />
+        </div>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div>
             <div className="inline-flex p-3 bg-blue-100 text-blue-700 rounded-2xl mb-4">

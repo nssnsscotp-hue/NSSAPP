@@ -11,6 +11,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 // Initialize Firebase App & Storage for 5 GB of Free Cloud Storage
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -449,8 +450,11 @@ export default function Resources() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4">
+    <div className="min-h-screen bg-slate-50 py-10 px-4 animate-fade-in">
       <div className="max-w-6xl mx-auto">
+        <div className="mb-6 flex justify-start">
+          <BackButton />
+        </div>
         
         {/* Page Heading Headers */}
         <div className="text-center mb-12 px-4">

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
+import BackButton from '../components/layout/BackButton';
 
 export default function HomeArrival() {
   const [userProfile, setUserProfile] = useState<{ id: string, full_name: string, unit: string } | null>(null);
@@ -194,8 +195,11 @@ export default function HomeArrival() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">
       <div className="max-w-xl mx-auto space-y-8">
+        <div className="flex justify-start">
+          <BackButton />
+        </div>
         <header className="text-center space-y-4">
           <div className="inline-flex p-4 bg-indigo-100 text-indigo-600 rounded-3xl shadow-sm">
             <Home size={32} />

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Plus, Search, Trash2, Loader2, Save, X, Droplets, MapPin, AlertCircle, Phone, Megaphone, Download, Filter, User, ChevronRight } from 'lucide-react';
+import { 
+  Heart, Plus, Search, Trash2, Loader2, Save, X, Droplets, 
+  MapPin, AlertCircle, Phone, Megaphone, Download, Filter, 
+  User, ChevronRight, CheckCircle2, Award, Sparkles 
+} from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 
@@ -32,6 +36,9 @@ export default function BloodAdmin() {
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGroup, setFilterGroup] = useState('All');
+  
+  // Interactive matchmaking drawer
+  const [matchingRequest, setMatchingRequest] = useState<EmergencyRequest | null>(null);
 
   const [formData, setFormData] = useState({
     bloodGroup: 'A+',
@@ -40,55 +47,90 @@ export default function BloodAdmin() {
     contact: '',
   });
 
+  // Always fetch both upon mount so matchmaking has comprehensive metrics
+  const fetchAllData = async () => {
+    setLoading(true);
+    await Promise.all([fetchRequests(), fetchDonors()]);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    if (activeTab === 'tickers') {
-      fetchRequests();
-    } else {
-      fetchDonors();
-    }
+    fetchAllData();
   }, [activeTab]);
 
   const fetchRequests = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('blood_emergency_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      if (data) {
-        setRequests(data.map(r => ({
-          bloodGroup: r.blood_group,
-          count: r.units_required,
-          venue: r.hospital_venue,
-          contact: r.contact_number,
-          status: r.status as 'active' | 'resolved',
-          row: r.id || r.row
-        })));
+      let reqList: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('blood_emergency_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        if (data && data.length > 0) {
+          reqList = data.map(r => ({
+            bloodGroup: r.blood_group,
+            count: r.units_required || "1 Unit",
+            venue: r.hospital_venue,
+            contact: r.contact_number,
+            status: r.status as 'active' | 'resolved',
+            row: r.id || r.row
+          }));
+        } else {
+          throw new Error("No cloud requests found");
+        }
+      } catch (cloudErr) {
+        console.warn("Supabase requests fetch failed, matching local database:", cloudErr);
+        const res = await fetch('/api/blood-emergency-requests');
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.list) {
+            reqList = resData.list.map((r: any) => ({
+              bloodGroup: r.blood_group,
+              count: r.units_required || "1 Unit",
+              venue: r.hospital_venue,
+              contact: r.contact_number,
+              status: r.status as 'active' | 'resolved',
+              row: r.id
+            }));
+          }
+        }
       }
+      setRequests(reqList);
     } catch (err) {
-      console.error("Failed to fetch requests", err);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch requests comprehensively", err);
     }
   };
 
   const fetchDonors = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('blood_donors')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      if (data) setDonors(data);
+      let donorList: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('blood_donors')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        if (data && data.length > 0) {
+          donorList = data;
+        } else {
+          throw new Error("No cloud donors listed");
+        }
+      } catch (cloudDonorsErr) {
+        console.warn("Supabase blood donors fetch failed, matching local database:", cloudDonorsErr);
+        const res = await fetch('/api/blood-donors');
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.list) {
+            donorList = resData.list;
+          }
+        }
+      }
+      setDonors(donorList);
     } catch (err) {
-      console.error("Failed to fetch donors", err);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch donors comprehensively", err);
     }
   };
 
@@ -122,14 +164,30 @@ export default function BloodAdmin() {
     setActioning(`donor-${id}`);
     setConfirmingDelete(null);
     try {
-      // Ensure session for RLS
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) await supabase.auth.signInAnonymously();
+      let cloudDeleted = false;
 
-      const { error } = await supabase.from('blood_donors').delete().eq('id', id);
-      if (error) throw error;
+      // Try Supabase delete
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) await supabase.auth.signInAnonymously();
+
+        const { error } = await supabase.from('blood_donors').delete().eq('id', id);
+        if (!error) cloudDeleted = true;
+      } catch (supabaseErr) {
+        console.warn("Supabase delete failed, carrying on locally:", supabaseErr);
+      }
+
+      // Replicate to Local backup API
+      const localRes = await fetch(`/api/blood-donors/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!localRes.ok && !cloudDeleted) {
+        throw new Error("Both database pipelines returned deletion errors.");
+      }
+
       alert("Donor record removed.");
-      fetchDonors();
+      await fetchDonors();
     } catch (err) {
       console.error(err);
       alert("Failed to delete record.");
@@ -150,29 +208,55 @@ export default function BloodAdmin() {
     e.preventDefault();
     setActioning('saving');
     try {
-      // Ensure session for RLS
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) await supabase.auth.signInAnonymously();
+      let isUploadedToCloud = false;
 
-      const { error } = await supabase
-        .from('blood_emergency_requests')
-        .insert([{
+      // Try Supabase upload
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) await supabase.auth.signInAnonymously();
+
+        const { error } = await supabase
+          .from('blood_emergency_requests')
+          .insert([{
+            blood_group: formData.bloodGroup,
+            units_required: formData.count,
+            hospital_venue: formData.venue,
+            contact_number: formData.contact,
+            status: 'active'
+          }]);
+
+        if (!error) {
+          isUploadedToCloud = true;
+        } else {
+          console.error("Cloud insert error:", error.message);
+        }
+      } catch (supabaseErr) {
+        console.warn("Supabase broadcast write error, relying on local storage replication:", supabaseErr);
+      }
+
+      // Replicate to physical local server storage
+      const localRes = await fetch('/api/blood-emergency-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           blood_group: formData.bloodGroup,
           units_required: formData.count,
           hospital_venue: formData.venue,
-          contact_number: formData.contact,
-          status: 'active'
-        }]);
+          contact_number: formData.contact
+        })
+      });
 
-      if (error) throw error;
+      if (!localRes.ok && !isUploadedToCloud) {
+        throw new Error("Both databases failed to record the emergency request ticker.");
+      }
       
-      alert("Broadcast Active");
+      alert("Emergency Alert Broadcast Released!");
       setIsAdding(false);
       setFormData({ bloodGroup: 'A+', count: '1 Unit', venue: '', contact: '' });
-      fetchRequests();
-    } catch (err) {
+      await fetchRequests();
+    } catch (err: any) {
       console.error(err);
-      alert("Broadcast failed");
+      alert("Broadcast failed: " + err.message);
     } finally {
       setActioning(null);
     }
@@ -182,19 +266,38 @@ export default function BloodAdmin() {
     const newStatus = currentStatus === 'active' ? 'resolved' : 'active';
     setActioning(`status-${id}`);
     try {
-      // Ensure session for RLS
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) await supabase.auth.signInAnonymously();
+      let isCloudPatched = false;
 
-      const { error } = await supabase
-        .from('blood_emergency_requests')
-        .update({ status: newStatus })
-        .eq('id', id);
-      
-      if (error) throw error;
-      fetchRequests();
-    } catch (err) {
+      // Try editing Supabase first
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) await supabase.auth.signInAnonymously();
+
+        const { error } = await supabase
+          .from('blood_emergency_requests')
+          .update({ status: newStatus })
+          .eq('id', id);
+        
+        if (!error) isCloudPatched = true;
+      } catch (supabaseErr) {
+        console.warn("Cloud update did not record status, carrying on locally:", supabaseErr);
+      }
+
+      // Sync into local backup endpoint
+      const localRes = await fetch(`/api/blood-emergency-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!localRes.ok && !isCloudPatched) {
+        throw new Error("Database status flags were unable to resolve.");
+      }
+
+      await fetchRequests();
+    } catch (err: any) {
       console.error(err);
+      alert("Failed to update status: " + err.message);
     } finally {
       setActioning(null);
     }
@@ -215,23 +318,40 @@ export default function BloodAdmin() {
     const isNumeric = !isNaN(numericId);
 
     try {
-      // Ensure session for RLS
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) await supabase.auth.signInAnonymously();
+      let isCloudDeleted = false;
 
-      // try both field names for maximum compatibility
-      const { error } = await supabase
-        .from('blood_emergency_requests')
-        .delete()
-        .eq('id', id);
-      
-      if (error) {
-        if (isNumeric) {
-          await supabase.from('blood_emergency_requests').delete().eq('id', numericId);
-          await supabase.from('blood_emergency_requests').delete().eq('row', numericId);
+      // Try cloud deletion
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) await supabase.auth.signInAnonymously();
+
+        const { error } = await supabase
+          .from('blood_emergency_requests')
+          .delete()
+          .eq('id', id);
+        
+        if (!error) {
+          isCloudDeleted = true;
         } else {
-          await supabase.from('blood_emergency_requests').delete().eq('row', id);
+          if (isNumeric) {
+            await supabase.from('blood_emergency_requests').delete().eq('id', numericId);
+            await supabase.from('blood_emergency_requests').delete().eq('row', numericId);
+          } else {
+            await supabase.from('blood_emergency_requests').delete().eq('row', id);
+          }
+          isCloudDeleted = true;
         }
+      } catch (supabaseErr) {
+        console.warn("Cloud deletion failed, continuing locally:", supabaseErr);
+      }
+
+      // Replicate to Local fallback deletion
+      const localRes = await fetch(`/api/blood-emergency-requests/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!localRes.ok && !isCloudDeleted) {
+        throw new Error("Local and remote storage deletes both failed.");
       }
       
       alert("Alert removed successfully.");
@@ -245,7 +365,107 @@ export default function BloodAdmin() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      
+      {/* MATCHMAKER SLIDE-OVER PANEL DRAWER */}
+      <AnimatePresence>
+        {matchingRequest && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
+            {/* Backdrop click closer */}
+            <div className="absolute inset-0" onClick={() => setMatchingRequest(null)} />
+            
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 180 }}
+              className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between z-10"
+            >
+              <div className="p-6 overflow-y-auto space-y-6">
+                <div className="flex items-center justify-between border-b pb-4">
+                  <div className="flex items-center gap-2">
+                    <Droplets className="text-red-600 animate-pulse" size={24} />
+                    <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tight">Matching Donors</h3>
+                  </div>
+                  <button 
+                    onClick={() => setMatchingRequest(null)}
+                    className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 transition text-slate-500"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Request Context Box */}
+                <div className="bg-red-50/50 border border-red-100 p-4 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-red-600 uppercase tracking-widest">{matchingRequest.bloodGroup} Requested</span>
+                    <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[9px] font-black">{matchingRequest.count} Required</span>
+                  </div>
+                  <div className="text-xs text-slate-500 font-bold flex items-center gap-1">
+                    <MapPin size={12} className="text-red-500" /> {matchingRequest.venue}
+                  </div>
+                </div>
+
+                {/* Matchmaking lists */}
+                <div className="space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
+                    Available Donors Matrix ({donors.filter(d => d.blood_group === matchingRequest.bloodGroup).length})
+                  </span>
+
+                  {donors.filter(d => d.blood_group === matchingRequest.bloodGroup).length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100 text-slate-400 font-bold space-y-2">
+                      <AlertCircle size={28} className="mx-auto text-amber-500" />
+                      <p className="text-sm">No exact registered matches</p>
+                      <p className="text-[10px] text-slate-400 normal-case leading-relaxed font-semibold">
+                        Consider contacting standard emergency desks or posting of surrounding sub-circles in public chat boards.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {donors
+                        .filter(d => d.blood_group === matchingRequest.bloodGroup)
+                        .map(donor => (
+                          <div 
+                            key={donor.id}
+                            className="bg-white border border-slate-150 p-4 rounded-2xl flex items-center justify-between hover:border-red-200 transition duration-350 shadow-sm"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 bg-red-100 text-red-600 rounded-xl flex items-center justify-center font-black text-xs">
+                                {donor.full_name.charAt(0)}
+                              </div>
+                              <div>
+                                <span className="text-xs font-black text-slate-800 block">{donor.full_name}</span>
+                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest block mt-0.5">Unit {donor.unit}</span>
+                              </div>
+                            </div>
+
+                            <a 
+                              href={`tel:${donor.mobile}`}
+                              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] uppercase tracking-wider rounded-lg flex items-center gap-1 shadow transition cursor-pointer"
+                            >
+                              <Phone size={10} /> Contact
+                            </a>
+                          </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Close Footer drawer */}
+              <div className="p-4 border-t bg-slate-50 flex items-center justify-end">
+                <button
+                  onClick={() => setMatchingRequest(null)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl text-xs font-black uppercase tracking-wider text-slate-600 transition"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Blood Bank Command</h2>
@@ -269,7 +489,7 @@ export default function BloodAdmin() {
               activeTab === 'donors' ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
-            Donors
+            Donors ({donors.length})
           </button>
         </div>
       </header>
@@ -363,7 +583,7 @@ export default function BloodAdmin() {
             ) : requests.length > 0 ? (
               requests.map((r, i) => (
                 <div key={r.row || i} className={cn(
-                  "p-8 rounded-[2.5rem] border transition-all relative overflow-hidden",
+                  "p-6 sm:p-8 rounded-[2.5rem] border transition-all relative overflow-hidden",
                   r.status === 'active' ? "bg-white border-red-100 shadow-xl shadow-red-600/5 transition-all" : "bg-slate-50 border-slate-200 opacity-60"
                 )}>
                   {confirmingDelete === `alert-${r.row}` && (
@@ -389,11 +609,13 @@ export default function BloodAdmin() {
                         </p>
                       </div>
                     </div>
+                    
                     <div className="flex gap-2">
-                       <button 
+                      <button 
                         onClick={() => handleStatus(r.row, r.status)}
                         disabled={!!actioning}
                         className="w-10 h-10 bg-slate-100 text-slate-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center font-black text-[10px]"
+                        title="Toggle Resolution Stat"
                       >
                         {actioning === `status-${r.row}` ? <Loader2 size={14} className="animate-spin" /> : (r.status === 'active' ? 'End' : 'Live')}
                       </button>
@@ -409,14 +631,29 @@ export default function BloodAdmin() {
                             ? "bg-red-600 text-white animate-pulse" 
                             : "bg-slate-100 text-slate-600 hover:bg-red-600 hover:text-white"
                         )}
+                        title="Delete Alert Broadcast"
                       >
                         {actioning === `delete-${r.row}` ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-4 bg-slate-900 rounded-2xl text-white relative z-10">
-                    <Phone size={14} className="text-red-400" />
-                    <span className="text-xs font-black uppercase tracking-widest">{r.contact}</span>
+
+                  {/* Operational Coordination Board & Matchmaker button */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10">
+                    <div className="flex items-center gap-3 p-4 bg-slate-900 rounded-2xl text-white flex-1 select-all">
+                      <Phone size={14} className="text-red-400" />
+                      <span className="text-xs font-black uppercase tracking-widest">{r.contact}</span>
+                    </div>
+
+                    {r.status === 'active' && (
+                      <button
+                        onClick={() => setMatchingRequest(r)}
+                        className="px-4 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-md shadow-red-500/15"
+                      >
+                        <Sparkles size={13} />
+                        Match Donors
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -446,14 +683,14 @@ export default function BloodAdmin() {
                 <select 
                   value={filterGroup} 
                   onChange={(e) => setFilterGroup(e.target.value)}
-                  className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none pr-4"
+                  className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none pr-4 cursor-pointer"
                 >
                   {bloodGroups.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
               <button 
                 onClick={downloadCSV}
-                className="h-12 px-6 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2 whitespace-nowrap"
+                className="h-12 px-6 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
               >
                 <Download size={16} />
                 Export CSV
@@ -500,19 +737,19 @@ export default function BloodAdmin() {
                           </span>
                         </td>
                         <td className="px-8 py-5">
-                          <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
-                            <Phone size={12} />
+                          <div className="flex items-center gap-2 text-blue-650 font-bold text-xs select-all">
+                            <Phone size={12} className="text-slate-400" />
                             {d.mobile}
                           </div>
                         </td>
                         <td className="px-8 py-5">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 w-fit px-3 py-1 rounded-full">Unit {d.unit}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 w-fit px-3 py-1 rounded-full">{d.unit || 'Unit 36'}</p>
                         </td>
                         <td className="px-8 py-5 text-right flex items-center justify-end gap-2">
                           {confirmingDelete === `donor-${d.id}` && (
                             <button 
                               onClick={() => setConfirmingDelete(null)}
-                              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 italic"
+                              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 italic mr-2"
                             >
                               No
                             </button>

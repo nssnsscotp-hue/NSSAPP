@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, X, ZoomIn, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 interface GalleryItem {
   src: string;
@@ -22,7 +23,23 @@ export default function Gallery() {
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.warn('Supabase gallery table load failed, falling back to local registry API:', error.message);
+        const res = await fetch('/api/public-gallery');
+        if (!res.ok) throw new Error("Local and cloud storage endpoints are both unreachable.");
+        const resData = await res.json();
+        if (resData.success && resData.list) {
+          setImages(resData.list.map((x: any) => ({
+            src: x.url,
+            caption: x.title,
+            date: x.date,
+            location: x.category
+          })));
+          return;
+        }
+        throw new Error("Invalid local gallery structure.");
+      }
+
       if (data) {
         setImages(data.map(x => ({ 
           src: x.url, 
@@ -31,15 +48,35 @@ export default function Gallery() {
           location: x.category
         })));
       }
-    } catch (err) { console.error('Gallery fetch failed', err); }
-    finally { setLoading(false); }
+    } catch (err) { 
+      console.error('Gallery fetch failed, running local backup query:', err); 
+      try {
+        const res = await fetch('/api/public-gallery');
+        const resData = await res.json();
+        if (resData.success && resData.list) {
+          setImages(resData.list.map((x: any) => ({
+            src: x.url,
+            caption: x.title,
+            date: x.date,
+            location: x.category
+          })));
+        }
+      } catch (fallbackErr) {
+        console.error("Deep local gallery database fallback failed:", fallbackErr);
+      }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { fetchGallery(); }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">
       <div className="max-w-7xl mx-auto">
+        <div className="mb-6 flex justify-start no-print">
+          <BackButton />
+        </div>
         <div className="text-center mb-16">
           <div className="inline-flex p-3 bg-emerald-100 text-emerald-600 rounded-2xl mb-4">
             <ImageIcon size={32} />

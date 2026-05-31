@@ -5,6 +5,7 @@ import { GAS_URLS } from '@/src/lib/constants';
 import { Program } from '@/src/pages/types';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 export default function Attendance() {
   const [userProfile, setUserProfile] = useState<{ id: string, full_name: string, unit: string } | null>(null);
@@ -211,8 +212,11 @@ export default function Attendance() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">
       <div className="max-w-xl mx-auto">
+        <div className="mb-6 flex justify-start">
+          <BackButton />
+        </div>
         <div className="text-center mb-8">
           <div className="inline-flex p-3 bg-blue-100 text-blue-600 rounded-2xl mb-4">
             <CheckCircle2 size={32} />

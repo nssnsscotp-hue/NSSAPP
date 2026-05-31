@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Users, GraduationCap, Mail, Phone, MapPin, Briefcase, Award, Plus, CheckCircle2, Search, ArrowRight, Star, Heart, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 export default function AlumniNetwork() {
   const [activeTab, setActiveTab] = useState<'directory' | 'register'>('directory');
@@ -52,8 +53,11 @@ export default function AlumniNetwork() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">
       <div className="max-w-6xl mx-auto">
+        <div className="mb-6 flex justify-start no-print">
+          <BackButton />
+        </div>
         <div className="text-center mb-16">
           <motion.div
              initial={{ opacity: 0, y: -20 }}

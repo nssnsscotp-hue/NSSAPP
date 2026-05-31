@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import BackButton from '../components/layout/BackButton';
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -46,8 +47,11 @@ export default function CalendarPage() {
   for (let d = 1; d <= daysInMonth; d++) calDays.push(d);
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">
       <div className="max-w-4xl mx-auto">
+        <div className="mb-6 flex justify-start">
+          <BackButton />
+        </div>
         <div className="text-center mb-12">
           <div className="inline-flex p-3 bg-blue-100 text-blue-600 rounded-2xl mb-4">
             <CalendarIcon size={32} />

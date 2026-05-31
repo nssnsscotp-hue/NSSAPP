@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, BookOpen, Clock, CheckCircle2, AlertCircle, Loader2, Award, ChevronRight, History, Calendar } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 interface DbQuestion {
   id: string;
@@ -253,8 +254,11 @@ export default function QuizSystem() {
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">
       <div className="max-w-3xl mx-auto">
+        <div className="mb-6 flex justify-start">
+          <BackButton />
+        </div>
         <div className="text-center mb-10">
           <div className="inline-flex p-3 bg-purple-100 text-purple-600 rounded-3xl mb-4 shadow-sm hover:scale-105 transition-transform">
             <Trophy size={36} />

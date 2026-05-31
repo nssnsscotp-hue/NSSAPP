@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Trophy, Medal, Star, Users, Flame, Heart, TrendingUp, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
+import BackButton from '../components/layout/BackButton';
 
 interface Volunteer {
   id: string;
@@ -128,9 +129,12 @@ export default function Leaderboard() {
   const others = volunteers.slice(3);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 animate-fade-in">
       {/* Header */}
       <div className="bg-slate-900 text-white py-16 px-4 overflow-hidden relative">
+        <div className="max-w-7xl mx-auto mb-8 flex justify-start relative z-10">
+          <BackButton className="bg-white/10 text-white border-white/20 hover:bg-white/20 hover:text-white" />
+        </div>
         <div className="absolute top-0 left-0 w-full h-full opacity-10">
           <div className="absolute -top-20 -left-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl" />
           <div className="absolute top-40 -right-20 w-80 h-80 bg-purple-500 rounded-full blur-3xl" />

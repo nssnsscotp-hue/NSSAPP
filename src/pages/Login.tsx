@@ -380,38 +380,40 @@ export default function Login() {
             ← Back to Homepage
           </Link>
         </div>
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 max-w-md mx-auto">
           <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="flex items-center justify-center gap-4 mb-8"
+            transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+            className="flex items-center justify-center gap-5 mb-8"
           >
-            <div className="w-24 h-24 bg-white p-3 rounded-[2rem] shadow-2xl shadow-blue-700/10 border border-slate-100 flex items-center justify-center transform hover:rotate-3 transition-transform">
+            <div className="w-20 h-20 bg-white/85 p-3.5 rounded-2xl shadow-xl border border-slate-100 flex items-center justify-center transform hover:rotate-3 transition duration-300">
               <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="College Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
-            <div className="w-24 h-24 bg-white p-3 rounded-[2.5rem] shadow-2xl shadow-blue-700/10 border border-slate-100 flex items-center justify-center -mt-6 transform hover:-rotate-3 transition-transform">
+            <div className="w-20 h-20 bg-white/85 p-3.5 rounded-2xl shadow-xl border border-slate-100 flex items-center justify-center -mt-4 transform hover:-rotate-3 transition duration-300">
               <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" alt="NSS Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
           </motion.div>
           <h1 
             onClick={handleTitleClick}
-            className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic cursor-pointer select-none"
+            className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase italic cursor-pointer select-none transition-colors hover:text-blue-700"
           >
             National Service Scheme
           </h1>
-          <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-3">NSS College Ottapalam | Units 36 & 94</p>
+          <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-3">NSS College Ottapalam | Units 36 & 94</p>
         </div>
 
         <motion.div 
-          initial={{ y: 20, opacity: 0 }}
+          initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden"
+          transition={{ type: 'spring', stiffness: 100, damping: 20, delay: 0.1 }}
+          className="bg-white p-8 md:p-10 rounded-[2.5rem] border border-slate-150 overflow-hidden premium-shadow-xl hover:border-slate-200 transition-colors duration-300"
         >
-          <div className="flex bg-slate-100 p-1 rounded-2xl mb-8">
+          <div className="flex bg-slate-100/80 p-1.5 rounded-2xl mb-8 border border-slate-200/40">
             <button 
               onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
               className={cn(
-                "flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
+                "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-350 btn-tactile",
                 isLogin ? "bg-white text-blue-700 shadow-sm" : "text-slate-400 hover:text-slate-600"
               )}
             >
@@ -420,7 +422,7 @@ export default function Login() {
             <button 
               onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
               className={cn(
-                "flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
+                "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-350 btn-tactile",
                 !isLogin ? "bg-white text-blue-700 shadow-sm" : "text-slate-400 hover:text-slate-600"
               )}
             >
@@ -430,25 +432,25 @@ export default function Login() {
 
           {error && (
             <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-red-50 border border-red-100 text-red-500 text-xs font-bold uppercase tracking-widest text-center rounded-2xl flex items-center justify-center gap-2"
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-6 p-4 bg-red-50/70 border border-red-100 text-red-600 text-[10px] font-black uppercase tracking-widest text-center rounded-2xl flex items-center justify-center gap-2 shadow-xs"
             >
-              <Shield size={14} /> {error}
+              <Shield size={14} className="animate-pulse" /> {error}
             </motion.div>
           )}
 
           {success && (
             <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-green-50 border border-green-100 text-green-600 text-xs font-bold uppercase tracking-widest text-center rounded-2xl"
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-6 p-4 bg-green-50/70 border border-green-100 text-green-600 text-[10px] font-black uppercase tracking-widest text-center rounded-2xl shadow-xs"
             >
               {success}
             </motion.div>
           )}
 
-          <form onSubmit={isLogin ? handleLogin : handleRegister} className="space-y-5">
+          <form onSubmit={isLogin ? handleLogin : handleRegister} className="space-y-4">
             <AnimatePresence mode="wait">
               {!isLogin && (
                 <motion.div 
@@ -456,39 +458,40 @@ export default function Login() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4"
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  className="space-y-4 overflow-hidden"
                 >
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                     <input 
                       type="text" required placeholder="Full Name (e.g. John Doe)" 
                       value={regName} onChange={e => setRegName(e.target.value)}
-                      className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-sm tracking-tight" 
+                      className="w-full h-14 bg-slate-50/50 border border-slate-200/60 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 font-bold text-sm tracking-tight transition-all duration-300" 
                     />
                   </div>
                   <div className="relative">
-                    <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                     <input 
                       type="tel" required placeholder="Mobile Number (e.g. 9876543210)" 
                       value={regMobile} onChange={e => setRegMobile(e.target.value)}
-                      className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-sm tracking-tight" 
+                      className="w-full h-14 bg-slate-50/50 border border-slate-200/60 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 font-bold text-sm tracking-tight transition-all duration-300" 
                     />
                   </div>
                   <div className="relative">
-                    <School className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <School className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                     <select 
                       value={regUnit} onChange={e => setRegUnit(e.target.value)}
-                      className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-sm uppercase tracking-widest"
+                      className="w-full h-14 bg-slate-50/50 border border-slate-200/60 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 font-bold text-sm uppercase tracking-widest cursor-pointer"
                     >
                       <option value="36">Unit 36</option>
                       <option value="94">Unit 94</option>
                     </select>
                   </div>
                   <div className="relative">
-                    <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                     <select 
                       value={regDepartment} onChange={e => setRegDepartment(e.target.value)}
-                      className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-sm"
+                      className="w-full h-14 bg-slate-50/50 border border-slate-200/60 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 font-bold text-sm cursor-pointer"
                     >
                       {['English', 'Hindi', 'Malayalam', 'Commerce', 'Physics', 'Chemistry', 'Economics', 'Computer Science', 'Electronics', 'Botany', 'Zoology', 'Mathematics', 'History'].map(dep => (
                         <option key={dep} value={dep}>{dep}</option>
@@ -500,33 +503,34 @@ export default function Login() {
             </AnimatePresence>
 
             <div className="relative">
-              <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
               <input 
                 type="text" required placeholder={isLogin ? "Volunteer ID / Username" : "Choose Username"} 
                 value={isLogin ? loginUser : regUser} onChange={e => isLogin ? setLoginUser(e.target.value) : setRegUser(e.target.value)}
-                className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-sm tracking-tight uppercase" 
+                className="w-full h-14 bg-slate-50/50 border border-slate-200/60 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 font-bold text-sm tracking-tight uppercase transition-all duration-300" 
               />
             </div>
 
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
               <input 
                 type="password" required placeholder="Security Password" 
                 value={isLogin ? loginPass : regPass} onChange={e => isLogin ? setLoginPass(e.target.value) : setRegPass(e.target.value)}
-                className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600 font-bold text-sm tracking-tight" 
+                className="w-full h-14 bg-slate-50/50 border border-slate-200/60 rounded-2xl pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 font-bold text-sm tracking-tight transition-all duration-300" 
               />
             </div>
 
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               disabled={loading}
               type="submit"
-              className="w-full h-16 bg-blue-700 hover:bg-blue-600 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-700/20 transition-all flex items-center justify-center gap-2 mt-8 disabled:opacity-50"
+              className="w-full h-16 bg-blue-700 hover:bg-blue-650 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-700/15 hover:shadow-blue-700/25 transition-all duration-300 flex items-center justify-center gap-2 mt-8 disabled:opacity-50 btn-tactile"
             >
-              {loading ? <Loader2 className="animate-spin" /> : (isLogin ? "Access Portal" : "Join NSS Units")}
-            </button>
+              {loading ? <Loader2 className="animate-spin" size={18} /> : (isLogin ? "Access Portal" : "Join NSS Units")}
+            </motion.button>
           </form>
 
-          <p className="text-center text-[10px] uppercase font-black tracking-widest text-slate-300 mt-10 italic">
+          <p className="text-center text-[10px] uppercase font-black tracking-widest text-slate-300 mt-10 italic select-none">
             "Not Me But You"
           </p>
         </motion.div>

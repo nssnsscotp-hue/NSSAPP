@@ -56,11 +56,13 @@ export default function Navbar() {
     { name: 'Blood Bank', href: '/bloodbank', icon: Heart },
     { name: 'SOS', href: '/sos', icon: ShieldAlert },
     { name: 'Complaints', href: '/complaints', icon: MessageSquare },
+    { name: 'User Guide', href: '/help', icon: HelpCircle },
   ];
 
   const publicNavItems = [
     { name: 'Home', href: '/', icon: Home },
     { name: 'Announcements', href: '/announcements', icon: Bell },
+    { name: 'User Guide', href: '/help', icon: HelpCircle },
     { name: 'Gallery', href: '/gallery', icon: Image },
   ];
 
@@ -72,6 +74,7 @@ export default function Navbar() {
         { name: 'Home', href: '/', icon: Home },
         { name: 'Principal Panel', href: '/principal', icon: GraduationCap },
         { name: 'Announcements', href: '/announcements', icon: Bell },
+        { name: 'User Guide', href: '/help', icon: HelpCircle },
         { name: 'Gallery', href: '/gallery', icon: Image },
         { name: 'Alumni', href: '/alumni', icon: GraduationCap },
       ];
@@ -80,6 +83,7 @@ export default function Navbar() {
         { name: 'Home', href: '/', icon: Home },
         { name: 'HOD Panel', href: '/hod', icon: GraduationCap },
         { name: 'Announcements', href: '/announcements', icon: Bell },
+        { name: 'User Guide', href: '/help', icon: HelpCircle },
         { name: 'Gallery', href: '/gallery', icon: Image },
       ];
     } else if (role === 'admin') {
@@ -87,6 +91,7 @@ export default function Navbar() {
         { name: 'Home', href: '/', icon: Home },
         { name: 'Admin Panel', href: '/admin', icon: User },
         { name: 'Announcements', href: '/announcements', icon: Bell },
+        { name: 'User Guide', href: '/help', icon: HelpCircle },
         { name: 'Gallery', href: '/gallery', icon: Image },
       ];
     } else {
@@ -122,48 +127,54 @@ export default function Navbar() {
           <div className="hidden md:block">
             <div className="flex items-center space-x-1 lg:space-x-2">
               {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "px-4 py-2.5 rounded-2xl transition-all duration-300 flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest",
-                    location.pathname === item.href 
-                      ? "bg-brand-600 text-white shadow-xl shadow-brand-500/30" 
-                      : "text-slate-500 hover:text-brand-600 hover:bg-brand-50"
-                  )}
-                >
-                  <item.icon size={16} />
-                  <span className="hidden lg:inline">{item.name}</span>
-                </Link>
+                <motion.div key={item.name} whileHover={{ y: -1 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    to={item.href}
+                    className={cn(
+                      "px-4 py-2.5 rounded-2xl transition-all duration-350 flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest",
+                      location.pathname === item.href 
+                        ? "bg-brand-600 text-white shadow-xl shadow-brand-500/30" 
+                        : "text-slate-500 hover:text-brand-600 hover:bg-brand-50"
+                    )}
+                  >
+                    <item.icon size={16} />
+                    <span className="hidden lg:inline">{item.name}</span>
+                  </Link>
+                </motion.div>
               ))}
               <div className="w-px h-8 bg-slate-200 mx-2" />
               {isLoggedIn ? (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleLogout}
-                  className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-red-600 transition-all duration-300 shadow-lg shadow-slate-900/20"
+                  className="w-12 h-12 rounded-2xl bg-slate-100/90 text-slate-700 hover:text-white hover:bg-red-650 flex items-center justify-center transition-all duration-300 shadow-md border border-slate-200/40"
                   title="Logout"
                 >
                   <LogOut size={18} className="pointer-events-none" />
-                </button>
+                </motion.button>
               ) : (
-                <Link
-                  to="/login"
-                  className="px-6 h-12 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-brand-500/20 font-black text-[10px] uppercase tracking-widest whitespace-nowrap"
-                >
-                  <LogIn size={14} />
-                  <span>Portal Login</span>
-                </Link>
+                <motion.div whileHover={{ y: -1 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    to="/login"
+                    className="px-6 h-12 bg-brand-600 hover:bg-brand-700 text-white rounded-2xl flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-brand-500/20 font-black text-[10px] uppercase tracking-widest whitespace-nowrap"
+                  >
+                    <LogIn size={14} />
+                    <span>Portal Login</span>
+                  </Link>
+                </motion.div>
               )}
             </div>
           </div>
 
           <div className="md:hidden flex items-center">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={() => setIsOpen(!isOpen)}
-              className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-500/20"
+              className="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-500/20 active:scale-95 transition-all"
             >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+              {isOpen ? <X size={22} /> : <Menu size={22} />}
+            </motion.button>
           </div>
         </div>
       </div>
