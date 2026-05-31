@@ -227,10 +227,15 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 pb-24 selection:bg-brand-500 selection:text-white overflow-x-hidden relative animate-fade-in">
+    <div className="min-h-screen bg-slate-50/50 starry-grid font-sans text-slate-900 pb-24 selection:bg-brand-500 selection:text-white overflow-x-hidden relative animate-fade-in">
       
+      {/* Morphing Dynamic Flares and Cinematic Lights */}
+      <div className="absolute top-[5vh] left-[5vw] w-96 h-96 bg-brand-400/8 rounded-full blur-3xl organic-blob pointer-events-none -z-10" />
+      <div className="absolute top-[40vh] right-[5vw] w-[450px] h-[450px] bg-purple-500/8 rounded-full blur-3xl organic-blob pointer-events-none -z-10 animate-float-delayed" />
+      <div className="absolute top-[85vh] left-[15vw] w-[400px] h-[400px] bg-emerald-450/4 rounded-full blur-3xl organic-blob pointer-events-none -z-10 animate-float" />
+
       {/* Dynamic graphic: Soft glowing mesh vectors in the background responsive layers */}
-      <div className="absolute top-[-20%] left-[-15%] w-[90vw] h-[90vw] max-w-[1000px] bg-gradient-to-tr from-brand-300/10 via-purple-300/5 to-transparent -z-10 blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-15%] w-[90vw] h-[90vw] max-w-[1000px] bg-gradient-to-tr from-brand-300/10 via-purple-300/5 to-transparent -z-10 blur-[150px] rounded-full pointer-events-none animate-pulse-subtle" />
       <div className="absolute top-[35%] right-[-10%] w-[70vw] h-[70vw] max-w-[800px] bg-gradient-to-br from-blue-300/8 via-teal-300/3 to-transparent -z-10 blur-[130px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[5%] left-[2%] w-[50vw] h-[50vw] max-w-[500px] bg-gradient-to-tr from-rose-300/5 to-indigo-300/5 -z-10 blur-[120px] rounded-full pointer-events-none" />
 
