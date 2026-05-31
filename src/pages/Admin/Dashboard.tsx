@@ -124,49 +124,60 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      {/* Sidebar - Mobile: Horizontal Scroll, Desktop: Side fixed */}
-      <aside className="w-full md:w-72 bg-slate-900 text-white md:min-h-screen sticky top-16 md:top-16 z-40 overflow-x-auto md:overflow-x-visible">
-        <div className="p-4 md:p-8 border-b border-white/5">
-          <div className="flex items-center gap-3 mb-6 md:mb-8">
+      {/* Sidebar - Sticky at top on mobile, fixed side navigation on desktop */}
+      <aside className="w-full md:w-72 bg-slate-900 text-white md:min-h-screen sticky top-16 md:top-16 z-40 flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-white/10 shadow-xl">
+        
+        {/* Sidebar Header Block - Fixed, non-scrollable, responsive layout */}
+        <div className="p-4 md:p-8 md:pb-4 border-b border-white/5 flex flex-row md:flex-col items-center md:items-stretch justify-between md:justify-start gap-4">
+          <div className="flex items-center gap-3">
             <div className="flex -space-x-3 shrink-0">
-              <div className="w-10 h-10 bg-white rounded-xl p-1 flex items-center justify-center transform -rotate-6 shadow-xl">
-                <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-xl p-1 flex items-center justify-center transform -rotate-6 shadow-xl">
+                <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="College Logo" />
               </div>
-              <div className="w-10 h-10 bg-white rounded-xl p-1 flex items-center justify-center transform rotate-6 shadow-xl border border-slate-100">
-                <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-xl p-1 flex items-center justify-center transform rotate-6 shadow-xl border border-slate-100">
+                <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="NSS Logo" />
               </div>
             </div>
             <div>
-              <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none">Admin Hub</h1>
+              <h1 className="text-sm md:text-base font-black tracking-tighter uppercase italic leading-none">Admin Hub</h1>
               <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">Units 36 & 94</p>
             </div>
           </div>
 
-          <div className="mb-6">
+          <div className="md:mt-4 shrink-0 md:shrink">
             <button
               onClick={() => navigate('/')}
-              className="w-full h-11 bg-white/5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 text-white border border-white/10 rounded-xl px-4 flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+              className="h-9 md:h-11 bg-white/5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 text-white border border-white/10 rounded-xl px-3 md:px-4 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer btn-tactile"
             >
-              <ArrowLeft size={16} />
-              <span>Back to Home</span>
+              <ArrowLeft size={14} className="md:w-4 md:h-4" />
+              <span className="hidden sm:inline md:inline">Back to Home</span>
+              <span className="sm:hidden md:hidden">Home</span>
             </button>
           </div>
-          
-          <h2 className="hidden md:block text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-6">Management</h2>
-          <nav className="flex md:flex-col gap-2 md:space-y-1 pb-2 md:pb-0">
+        </div>
+
+        {/* Separator / Subtitle - only on desktop */}
+        <div className="hidden md:block px-8 pt-6 pb-2">
+          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Management</h2>
+        </div>
+
+        {/* Scrollable Navigation Menu Item Containers */}
+        {/* On mobile: horizontal scroll menu. On desktop: vertical menu list with clean vertical scroll if needed */}
+        <div className="flex-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto scrollbar-none">
+          <nav className="flex md:flex-col gap-2 md:space-y-1 p-4 md:p-8 md:pt-0 pb-3 md:pb-6">
             {menuItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as AdminTab)}
                 className={cn(
-                  "flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                  "flex-shrink-0 flex items-center gap-2.5 md:gap-3 px-3.5 md:px-4 py-2.5 md:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 whitespace-nowrap btn-tactile",
                   activeTab === item.id 
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
                     : "text-slate-400 hover:text-white hover:bg-slate-800"
                 )}
               >
-                <item.icon size={18} className="shrink-0" />
-                {item.name}
+                <item.icon size={16} className="shrink-0 md:w-[18px] md:h-[18px]" />
+                <span>{item.name}</span>
               </button>
             ))}
           </nav>
