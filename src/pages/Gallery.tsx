@@ -18,54 +18,109 @@ export default function Gallery() {
 
   const fetchGallery = async () => {
     try {
-      const { data, error } = await supabase
-        .from('gallery')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.warn('Supabase gallery table load failed, falling back to local registry API:', error.message);
-        const res = await fetch('/api/public-gallery');
-        if (!res.ok) throw new Error("Local and cloud storage endpoints are both unreachable.");
-        const resData = await res.json();
-        if (resData.success && resData.list) {
-          setImages(resData.list.map((x: any) => ({
-            src: x.url,
-            caption: x.title,
-            date: x.date,
-            location: x.category
-          })));
-          return;
+      setLoading(true);
+      let mergedList: any[] = [];
+      const urlsSeen = new Set<string>();
+
+      // 1. Fetch from Supabase
+      try {
+        const { data, error } = await supabase
+          .from('gallery')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (!error && data) {
+          data.forEach(x => {
+            const url = (x.url || '').trim();
+            if (url && !urlsSeen.has(url)) {
+              urlsSeen.add(url);
+              mergedList.push({
+                src: url,
+                caption: x.title || 'NSS Activity',
+                date: x.date || (x.created_at ? new Date(x.created_at).toLocaleDateString('en-GB') : 'Recent Activity'),
+                location: x.category || 'Ottapalam Campus',
+                rawDate: x.date || x.created_at || ''
+              });
+            }
+          });
         }
-        throw new Error("Invalid local gallery structure.");
+      } catch (spErr) {
+        console.warn('Supabase gallery table load failed in main gallery page:', spErr);
       }
 
-      if (data) {
-        setImages(data.map(x => ({ 
-          src: x.url, 
-          caption: x.title,
-          date: x.date,
-          location: x.category
-        })));
-      }
-    } catch (err) { 
-      console.error('Gallery fetch failed, running local backup query:', err); 
+      // 2. Fetch from local endpoint
       try {
         const res = await fetch('/api/public-gallery');
-        const resData = await res.json();
-        if (resData.success && resData.list) {
-          setImages(resData.list.map((x: any) => ({
-            src: x.url,
-            caption: x.title,
-            date: x.date,
-            location: x.category
-          })));
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.list) {
+            resData.list.forEach((x: any) => {
+              const url = (x.url || '').trim();
+              if (url && !urlsSeen.has(url)) {
+                urlsSeen.add(url);
+                mergedList.push({
+                  src: url,
+                  caption: x.title || 'NSS Activity',
+                  date: x.date || 'Recent Activity',
+                  location: x.category || 'Ottapalam Campus',
+                  rawDate: x.date || ''
+                });
+              }
+            });
+          }
         }
-      } catch (fallbackErr) {
-        console.error("Deep local gallery database fallback failed:", fallbackErr);
+      } catch (localErr) {
+        console.warn('Local API fallback error in main gallery page:', localErr);
       }
-    } finally { 
-      setLoading(false); 
+
+      // 3. Sort merged list by Date descending
+      mergedList.sort((a, b) => {
+        const ad = a.rawDate ? new Date(a.rawDate).getTime() : 0;
+        const bd = b.rawDate ? new Date(b.rawDate).getTime() : 0;
+        return bd - ad;
+      });
+
+      // 4. Default fallback sample pictures if absolutely nothing has been custom published by administrators yet
+      if (mergedList.length === 0) {
+        setImages([
+          {
+            src: "https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=800&auto=format&fit=crop",
+            caption: "NSS Mega Campus Cleaning & Green Drive",
+            date: "04 Jun 2026",
+            location: "Ottapalam Campus"
+          },
+          {
+            src: "https://images.unsplash.com/photo-1615461066841-6116ecdccd04?q=80&w=800&auto=format&fit=crop",
+            caption: "Emergency Medical & Blood Donation Camp",
+            date: "28 May 2026",
+            location: "Academic Hall"
+          },
+          {
+            src: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop",
+            caption: "Interactive Literacy Outreach & Study Kits Supply",
+            date: "15 May 2026",
+            location: "Orphanage Annex"
+          },
+          {
+            src: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop",
+            caption: "World Environment Day Tree Saplings Initiative",
+            date: "05 Jun 2026",
+            location: "Municipal Ground"
+          },
+          {
+            src: "https://images.unsplash.com/photo-1469571486040-afbef0cd37bc?q=80&w=800&auto=format&fit=crop",
+            caption: "NSS Special Village Survey & Digital Adoption Camp",
+            date: "12 Apr 2026",
+            location: "Ottapalam Village"
+          }
+        ]);
+      } else {
+        setImages(mergedList);
+      }
+    } catch (err) {
+      console.error('Core gallery fetch and compilation failed:', err);
+    } finally {
+      setLoading(false);
     }
   };
 

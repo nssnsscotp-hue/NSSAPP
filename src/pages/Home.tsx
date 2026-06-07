@@ -155,42 +155,83 @@ export default function Home() {
           })));
         }
 
-        // 4. Fetch live administrative uploaded gallery
+        // 4. Fetch live administrative uploaded gallery with unified merging & fallback resilience
         try {
-          const { data: galleryData, error: galleryError } = await supabase
-            .from('gallery')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(12);
-          
-          if (galleryError) {
-            console.warn('Supabase gallery load failed on home, querying fallback local API:', galleryError.message);
+          let mergedList: any[] = [];
+          const urlsSeen = new Set<string>();
+
+          // Try fetching from Supabase first
+          try {
+            const { data: galleryData, error: galleryError } = await supabase
+              .from('gallery')
+              .select('*')
+              .order('created_at', { ascending: false });
+            
+            if (!galleryError && galleryData) {
+              galleryData.forEach(x => {
+                const url = (x.url || '').trim();
+                if (url && !urlsSeen.has(url)) {
+                  urlsSeen.add(url);
+                  mergedList.push({
+                    id: x.id,
+                    src: url,
+                    caption: x.title || 'NSS Activity',
+                    date: x.date || (x.created_at ? new Date(x.created_at).toLocaleDateString('en-GB') : 'Recent Activity'),
+                    location: x.category || 'Ottapalam Campus',
+                    rawDate: x.date || x.created_at || ''
+                  });
+                }
+              });
+            } else if (galleryError) {
+              console.warn('Supabase gallery query returned error on home:', galleryError.message);
+            }
+          } catch (spErr) {
+            console.warn('Exception querying Supabase gallery:', spErr);
+          }
+
+          // Then fetch from local fallback API
+          try {
             const res = await fetch('/api/public-gallery');
             if (res.ok) {
               const resData = await res.json();
               if (resData.success && resData.list) {
-                setGalleryImages(resData.list.map((x: any) => ({
-                  id: x.id,
-                  src: x.url,
-                  caption: x.title,
-                  date: x.date || 'Recent Activity',
-                  location: x.category || 'Ottapalam Campus'
-                })));
+                resData.list.forEach((x: any) => {
+                  const url = (x.url || '').trim();
+                  if (url && !urlsSeen.has(url)) {
+                    urlsSeen.add(url);
+                    mergedList.push({
+                      id: x.id,
+                      src: url,
+                      caption: x.title || 'NSS Activity',
+                      date: x.date || 'Recent Activity',
+                      location: x.category || 'Ottapalam Campus',
+                      rawDate: x.date || ''
+                    });
+                  }
+                });
               }
             }
-          } else if (galleryData && galleryData.length > 0) {
-            setGalleryImages(galleryData.map(x => ({ 
-              id: x.id,
-              src: x.url, 
-              caption: x.title,
-              date: x.date || 'Recent Activity',
-              location: x.category || 'Ottapalam Campus'
-            })));
+          } catch (localErr) {
+            console.warn('Local API gallery fetch error:', localErr);
+          }
+
+          // Sort merged list by Date descending
+          mergedList.sort((a, b) => {
+            const ad = a.rawDate ? new Date(a.rawDate).getTime() : 0;
+            const bd = b.rawDate ? new Date(b.rawDate).getTime() : 0;
+            return bd - ad; // descending order
+          });
+
+          // Fallback static items only if absolutely no records are posted/fetched anywhere
+          if (mergedList.length === 0) {
+            setGalleryImages(fallbackGallery);
           } else {
-            setGalleryImages([]);
+            // Limit to 12 items for home feed performance
+            setGalleryImages(mergedList.slice(0, 12));
           }
         } catch (gErr) {
-          console.warn('Catch error while fetching gallery images for Home page:', gErr);
+          console.warn('Catch error while fetching merged gallery images for Home page:', gErr);
+          setGalleryImages(fallbackGallery);
         }
       } catch (err) {
         console.error('Home data load failed', err);
