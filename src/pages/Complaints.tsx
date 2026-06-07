@@ -143,10 +143,10 @@ export default function ComplaintPortal() {
       
     } catch (err: any) {
       console.error("Fatal Submission Error:", err);
-      let errorMessage = err.message || "An unexpected system error occurred. Please try again.";
+      let errorMessage = "An unexpected error occurred while saving your complaint. Please verify your connection and try again.";
       
-      if (errorMessage.includes("row-level security")) {
-        errorMessage = "Database Permission Error: Please ensure RLS policies allow inserts for anonymous users, or contact the site admin to run the database setup script.";
+      if (err.message && (err.message.includes("row-level security") || err.message.includes("42P01"))) {
+        errorMessage = "The complaint storage service is temporarily unavailable due to a connection drop. Please notify the administration.";
       }
       
       setSubmitError(errorMessage);

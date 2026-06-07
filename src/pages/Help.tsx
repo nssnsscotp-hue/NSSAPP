@@ -270,7 +270,7 @@ export default function Help() {
     {
       id: 'faq-hours-approval',
       q: "How are my work hours evaluated, verified, and approved?",
-      a: "Hours flow through a robust 3-stage validation chain strictly aligned with university standards: \n1. Volunteer Registration: You post active task hours with detailed logs on the Attendance portal.\n2. HOD Clearance: Your designated Academic Head of Department (HOD) reviews the authenticity of the task content.\n3. Program Officer Credits: Administrative Program Officers perform final evaluation, allocating approved statutory credit hours. These accumulate toward official Calicut University certificates.",
+      a: "Hours flow through a robust 3-stage validation chain strictly aligned with university standards: \n1. Volunteer Registration: You post active task hours with detailed logs on the Attendance portal.\n2. HOD Clearance: Your designated Academic Head of Department (HOD) reviews the authenticity of the task content.\n3. Program Officer Credits: Administrative Program Officers perform final evaluation, allocating approved statutory credit hours. These accumulate toward official University of Calicut certificates.",
       category: 'volunteer',
       tags: ['Attendance', 'Hours', 'Grades']
     },
@@ -376,7 +376,7 @@ export default function Help() {
           </p>
           <div className="flex flex-wrap justify-center gap-2 pt-2">
             <span className="px-2.5 py-1 bg-white/10 rounded-full text-[9px] font-mono tracking-widest uppercase text-slate-200 border border-white/5">Units 36 & 94</span>
-            <span className="px-2.5 py-1 bg-emerald-500/20 rounded-full text-[9px] font-mono tracking-widest uppercase text-emerald-300 border border-emerald-500/20">Calicut University Approved</span>
+            <span className="px-2.5 py-1 bg-emerald-500/20 rounded-full text-[9px] font-mono tracking-widest uppercase text-emerald-300 border border-emerald-500/20">University of Calicut Approved</span>
             <span className="px-2.5 py-1 bg-indigo-500/20 rounded-full text-[9px] font-mono tracking-widest uppercase text-indigo-300 border border-indigo-500/20 font-bold">DIGITAL FRAMEWORK</span>
           </div>
         </div>

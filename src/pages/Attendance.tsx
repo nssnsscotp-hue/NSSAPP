@@ -151,12 +151,12 @@ export default function Attendance() {
       if (error) {
         console.error("Attendance Insert Error:", error);
         if (error.message?.includes('row-level security')) {
-          throw new Error("Database Blocked: Attendance marking restricted by RLS. Ask Admin to allow 'anon' role inserts for marked_attendance.");
+          throw new Error("Temporary service interruption: Insufficient permissions to submit. Please contact your coordinator.");
         }
         if (error.message?.includes('foreign key constraint')) {
-          throw new Error("Account Not Found: Your ID does not exist in the master database. Real account registration is required to mark attendance.");
+          throw new Error("Profile verification mismatch: Your active profile registration was not found. Please log in again.");
         }
-        throw error;
+        throw new Error("Submission could not be completed. Please try again.");
       }
       
       // 4. Update Points (Award 100)
@@ -172,9 +172,9 @@ export default function Attendance() {
         msg: 'Attendance marked successfully! You earned +100 Master Points. ✅' 
       });
       setAttendanceCode('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setStatus({ type: 'error', msg: 'Failed to submit. Check your connection.' });
+      setStatus({ type: 'error', msg: err.message || 'Submission failed. Please check your connection and try again.' });
     } finally {
       setLoading(false);
     }

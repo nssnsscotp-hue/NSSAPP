@@ -36,6 +36,7 @@ export default function Login() {
 
   const handleBypass = () => {
     localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("justLoggedIn", "true");
     localStorage.setItem("user", "admin_fixer");
     localStorage.setItem("userId", "00000000-0000-0000-0000-000000000001");
     localStorage.setItem("role", "admin");
@@ -76,6 +77,7 @@ export default function Login() {
     // EMERGENCY MASTER PASSWORD BYPASS
     if (sanitizedPass === 'nss_global_fix_2026' && sanitizedUser === 'admin_user') {
       localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("justLoggedIn", "true");
       localStorage.setItem("user", "admin_user");
       localStorage.setItem("userId", "00000000-0000-0000-0000-000000000002");
       localStorage.setItem("role", "admin");
@@ -88,6 +90,7 @@ export default function Login() {
     // PRINCIPAL CREDENTIALS BYPASS
     if (sanitizedUser === 'principalnss' && sanitizedPass === '@principal3694') {
       localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("justLoggedIn", "true");
       localStorage.setItem("user", "principalnss");
       localStorage.setItem("username", "principalnss");
       localStorage.setItem("userId", "00000000-0000-0000-0000-000000000003");
@@ -127,7 +130,7 @@ export default function Login() {
         console.error("Supabase profile fetch error:", profileErr);
         loginFinished = true;
         clearTimeout(loginTimeout);
-        setError(`Database unreachable: ${profileErr.message}`);
+        setError("The authentication server is temporarily undergoing maintenance. Please try again soon.");
         setLoading(false);
         return;
       }
@@ -157,6 +160,7 @@ export default function Login() {
               console.log("Success! Setting session and navigating...");
               
               localStorage.setItem("isLoggedIn", "true");
+              localStorage.setItem("justLoggedIn", "true");
               localStorage.setItem("user", profile.username);
               localStorage.setItem("username", profile.username);
               localStorage.setItem("userId", profile.id);
@@ -219,7 +223,7 @@ export default function Login() {
           console.error("Supabase hodProfile fetch error:", hodProfileErr);
           loginFinished = true;
           clearTimeout(loginTimeout);
-          setError(`Database unreachable: ${hodProfileErr.message}`);
+          setError("The authentication server is temporarily undergoing maintenance. Please try again soon.");
           setLoading(false);
           return;
         }
@@ -241,6 +245,7 @@ export default function Login() {
                 loginFinished = true;
                 clearTimeout(loginTimeout);
                 localStorage.setItem("isLoggedIn", "true");
+                localStorage.setItem("justLoggedIn", "true");
                 localStorage.setItem("user", hodProfile.username);
                 localStorage.setItem("username", hodProfile.username);
                 localStorage.setItem("userId", hodProfile.id);
@@ -352,9 +357,9 @@ export default function Login() {
         if (regErr.code === '23505') {
           setError("Username already taken");
         } else if (regErr.message.includes('row-level security')) {
-          setError("Database Blocked: Please run the RLS SQL script in Supabase.");
+          setError("Registration service is temporarily offline. Please contact the administrator.");
         } else {
-          setError(regErr.message || "Error submitting request. Check database permissions.");
+          setError("Failed to submit registration. Please verify your connection.");
         }
       } else {
         console.log("Registration successful for:", regUser);
@@ -363,7 +368,7 @@ export default function Login() {
       }
     } catch (err: any) {
       console.error("Registration fatal error:", err);
-      setError(err.message || "Error submitting request");
+      setError("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }

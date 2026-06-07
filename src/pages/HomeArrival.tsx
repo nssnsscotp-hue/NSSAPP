@@ -160,12 +160,12 @@ export default function HomeArrival() {
       if (opError) {
         console.error("Supabase Error:", opError);
         if (opError.message?.includes('row-level security')) {
-          throw new Error("Database Blocked: Safety updates are restricted by RLS. Ask Admin to allow 'anon' role updates for home_arrival.");
+          throw new Error("Unable to save status changes. Please contact your system administrator.");
         }
         if (opError.message?.includes('foreign key constraint')) {
-          throw new Error("Account Not Found: Your account identity (UUID) does not exist in the master user database. Please sign out and sign in with a real account.");
+          throw new Error("Account Not Found: Your account identity was not found in the coordinator records. Please sign out and log in again.");
         }
-        throw new Error(opError.message);
+        throw new Error("Failed to post status. Please request authorization from an administrator.");
       }
       
       setLastUpdate(new Date().toLocaleString());
@@ -178,8 +178,8 @@ export default function HomeArrival() {
       setMsg({ 
         type: 'error', 
         text: err.message?.includes('42P01') 
-          ? "Database table missing. Ask Admin to run the SQL setup." 
-          : `Failed to send status: ${err.message || 'Unknown error'}. Please retry.` 
+          ? "The safety database service is temporarily offline. Please notify the administration." 
+          : "Failed to send safety status. Please check your internet connection and try again." 
       });
     } finally {
       setSubmitting(false);

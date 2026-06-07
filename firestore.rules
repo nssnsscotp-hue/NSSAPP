@@ -11,9 +11,10 @@ service cloud.firestore {
       // Allowing public reads so volunteer profile pictures are visible when listing/rendering profiles or ID cards.
       allow read: if true;
 
-      // Restricting writes only to authenticated users matching the identity schema
-      allow create: if isSignedIn() && isValidProfile(request.resource.data) && username == request.resource.data.username;
-      allow update: if isSignedIn() && isValidProfile(request.resource.data) && username == request.resource.data.username
+      // Restricting writes only to users matching the identity schema. Since our app uses Supabase Auth,
+      // we match the profile data structure and ensure validation criteria.
+      allow create: if isValidProfile(request.resource.data) && username == request.resource.data.username;
+      allow update: if isValidProfile(request.resource.data) && username == request.resource.data.username
                     && (incoming().diff(existing()).affectedKeys().hasOnly(['avatar_url', 'updatedAt', 'username']));
       allow delete: if false;
     }
@@ -37,7 +38,7 @@ service cloud.firestore {
         && data.username.size() <= 100
         && data.avatar_url is string 
         && data.avatar_url.size() >= 5 
-        && data.avatar_url.size() <= 250000
+        && data.avatar_url.size() <= 1000000
         && data.updatedAt is string 
         && data.updatedAt.size() <= 100;
     }

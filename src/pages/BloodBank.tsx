@@ -202,15 +202,15 @@ export default function BloodBank() {
       });
 
       if (!localRes.ok && !isUploadedToCloud) {
-        throw new Error("Both local and cloud database storage units are currently busy.");
+        throw new Error("The network is currently busy. Please try again.");
       }
 
-      alert("Emergency Alert Broadcasted! NSS Coordinators and matching donors are notified in the cooperative matrix.");
+      alert("Emergency Alert Broadcasted! Coordinators and matching donors have been notified.");
       setEmergencyData({ hospital: '', requiredGroup: 'A+', units: '1 Unit', details: '', contactName: '', contactPhone: '' });
       setActiveTab('board');
       await loadDataPool();
     } catch (err: any) {
-      alert(`Broadcast Failed: ${err.message || 'Verification failed.'}`);
+      alert("Failed to broadcast alert. Please check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -260,14 +260,14 @@ export default function BloodBank() {
       });
 
       if (!localRes.ok && !isUploadedToCloud) {
-        throw new Error("Local and cloud storage pipelines are both currently busy.");
+        throw new Error("The network is currently busy. Please try again.");
       }
       
-      alert("Registration Successful! Your credentials are now secured under privacy-locked standards.");
+      alert("Registration Successful! Thank you for registering as a blood donor.");
       setFormData({ name: '', department: '', class: '', contact: '', bloodGroup: 'A+' });
       await loadDataPool();
     } catch (err: any) {
-      alert(`Registration Failed: ${err.message || 'Check database network status.'}`);
+      alert("Registration failed. Please verify your connection or try again later.");
     } finally {
       setSubmitting(false);
     }

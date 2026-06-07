@@ -6,6 +6,7 @@ import { GAS_URLS } from '@/src/lib/constants';
 import { supabase } from '@/src/lib/supabase';
 import { Link } from 'react-router-dom';
 import BackButton from '../components/layout/BackButton';
+import { getProfilePhoto } from '@/src/lib/firebaseClient';
 
 export default function VolunteerID() {
   const storedUser = localStorage.getItem('user') || '';
@@ -18,6 +19,7 @@ export default function VolunteerID() {
   const [downloading, setDownloading] = useState(false);
   const [loadingStats, setLoadingStats] = useState(true);
   const [stats, setStats] = useState({ points: 0, attendance: 0, rank: '-' });
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,6 +39,18 @@ export default function VolunteerID() {
           setPhone(profile.mobile || 'No Phone');
           setRole(profile.role || 'Volunteer');
           setUnit(profile.unit || '36/94');
+        }
+
+        // Fetch avatar URL from Firestore profiles collection
+        if (storedUser) {
+          try {
+            const photoUrl = await getProfilePhoto(storedUser);
+            if (photoUrl) {
+              setAvatarUrl(photoUrl);
+            }
+          } catch (photoErr) {
+            console.warn("Could not load Firestore profile photo on ID Card:", photoErr);
+          }
         }
 
         // 2. Fetch Leaderboard for Rank & Points
@@ -150,9 +164,14 @@ export default function VolunteerID() {
                   <div className="relative shrink-0">
                     <div className="w-28 h-28 rounded-full border-4 border-slate-800 overflow-hidden relative shadow-xl">
                       <img 
-                        src={`https://ui-avatars.com/api/?name=${userName}&background=002c6c&color=fff&size=256`} 
+                        src={avatarUrl || `https://ui-avatars.com/api/?name=${userName}&background=002c6c&color=fff&size=256`} 
                         className="w-full h-full object-cover grayscale brightness-110" 
                         alt={userName}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=002c6c&color=fff&size=256`;
+                        }}
                       />
                     </div>
                     <div className="absolute bottom-0 right-1 bg-green-500 text-white p-1 rounded-full border-2 border-slate-950 shadow">
@@ -182,7 +201,7 @@ export default function VolunteerID() {
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-wider block">Affiliation</span>
-                    <span className="text-xs font-bold text-white uppercase">Calicut Univ.</span>
+                    <span className="text-xs font-bold text-white uppercase">Univ. of Calicut</span>
                   </div>
                 </div>
 
@@ -241,9 +260,14 @@ export default function VolunteerID() {
                   <div className="col-span-4 relative">
                     <div className="aspect-[1/1] w-full max-w-[150px] bg-slate-900 rounded-3xl border-4 border-slate-800 overflow-hidden shadow-xl relative">
                       <img 
-                        src={`https://ui-avatars.com/api/?name=${userName}&background=002c6c&color=fff&size=512`} 
+                        src={avatarUrl || `https://ui-avatars.com/api/?name=${userName}&background=002c6c&color=fff&size=512`} 
                         className="w-full h-full object-cover grayscale brightness-110" 
                         alt={userName}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=002c6c&color=fff&size=512`;
+                        }}
                       />
                       <div className="absolute inset-0 bg-indigo-500/10 mix-blend-overlay" />
                     </div>

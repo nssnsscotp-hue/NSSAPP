@@ -7,7 +7,7 @@ import {
   Instagram, MessageCircle, ExternalLink, HelpCircle, ChevronDown, 
   HeartHandshake, ChevronRight, ShieldCheck, Award, Info, BookOpen,
   Sparkles, Check, CheckCircle2, Globe, ArrowUpRight, Smartphone, Monitor,
-  Droplets, Activity
+  Droplets, Activity, Image as ImageIcon, ChevronLeft
 } from 'lucide-react';
 import { Highlight } from '@/src/pages/types';
 import { cn } from '@/src/lib/utils';
@@ -20,6 +20,73 @@ export default function Home() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null);
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(null);
+  const [mobileFeedTab, setMobileFeedTab] = useState<'diaries' | 'notices'>('diaries');
+  
+  // Custom states for admin activity gallery widget
+  const [galleryImages, setGalleryImages] = useState<any[]>([]);
+  const [isGalleryPaused, setIsGalleryPaused] = useState(false);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollLeftGallery = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -350, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRightGallery = () => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      if (container.scrollLeft >= maxScrollLeft - 10) {
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: 350, behavior: 'smooth' });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isGalleryPaused) return;
+
+    const interval = setInterval(() => {
+      scrollRightGallery();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isGalleryPaused, galleryImages]);
+
+  const fallbackGallery = [
+    {
+      src: "https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=800&auto=format&fit=crop",
+      caption: "NSS Mega Campus Cleaning & Green Drive",
+      date: "04 Jun 2026",
+      location: "Ottapalam Campus"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1615461066841-6116ecdccd04?q=80&w=800&auto=format&fit=crop",
+      caption: "Emergency Medical & Blood Donation Camp",
+      date: "28 May 2026",
+      location: "Academic Hall"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop",
+      caption: "Interactive Literacy Outreach & Study Kits Supply",
+      date: "15 May 2026",
+      location: "Orphanage Annex"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop",
+      caption: "World Environment Day Tree Saplings Initiative",
+      date: "05 Jun 2026",
+      location: "Municipal Ground"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1469571486040-afbef0cd37bc?q=80&w=800&auto=format&fit=crop",
+      caption: "NSS Special Village Survey & Digital Adoption Camp",
+      date: "12 Apr 2026",
+      location: "Ottapalam Village"
+    }
+  ];
   
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const username = localStorage.getItem('name') || localStorage.getItem('user') || 'Volunteer';
@@ -86,6 +153,44 @@ export default function Home() {
               year: 'numeric'
             }) : 'Recent'
           })));
+        }
+
+        // 4. Fetch live administrative uploaded gallery
+        try {
+          const { data: galleryData, error: galleryError } = await supabase
+            .from('gallery')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(12);
+          
+          if (galleryError) {
+            console.warn('Supabase gallery load failed on home, querying fallback local API:', galleryError.message);
+            const res = await fetch('/api/public-gallery');
+            if (res.ok) {
+              const resData = await res.json();
+              if (resData.success && resData.list) {
+                setGalleryImages(resData.list.map((x: any) => ({
+                  id: x.id,
+                  src: x.url,
+                  caption: x.title,
+                  date: x.date || 'Recent Activity',
+                  location: x.category || 'Ottapalam Campus'
+                })));
+              }
+            }
+          } else if (galleryData && galleryData.length > 0) {
+            setGalleryImages(galleryData.map(x => ({ 
+              id: x.id,
+              src: x.url, 
+              caption: x.title,
+              date: x.date || 'Recent Activity',
+              location: x.category || 'Ottapalam Campus'
+            })));
+          } else {
+            setGalleryImages([]);
+          }
+        } catch (gErr) {
+          console.warn('Catch error while fetching gallery images for Home page:', gErr);
         }
       } catch (err) {
         console.error('Home data load failed', err);
@@ -342,9 +447,26 @@ export default function Home() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14 space-y-20">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14 space-y-20 relative">
+        {/* SVG DEF FOR FLUID HIGH-FIDELITY INDIAN FLAG WAVE FILTER */}
+        <svg className="absolute w-0 h-0 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="indian-flag-wave" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.012 0.024" numOctaves="2" result="noise">
+                <animate attributeName="baseFrequency" values="0.012 0.024; 0.02 0.038; 0.012 0.024" dur="7s" repeatCount="indefinite" />
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+        </svg>
         
-        {/* PREMIUM STARTUP-LEVEL HERO SECTION */}
+        {/* EXQUISITE VISUAL DECORATIONS: MORPHING BLOB FLARES & ANIMATED MESH */}
+        <div className="absolute top-[10vh] left-[5vw] w-96 h-96 bg-brand-400/10 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse duration-[8s]" />
+        <div className="absolute top-[50vh] right-[5vw] w-[450px] h-[450px] bg-purple-500/10 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse duration-[10s]" />
+        <div className="absolute top-[90vh] left-[10vw] w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute top-[140vh] right-[10vw] w-[350px] h-[350px] bg-amber-500/5 rounded-full blur-3xl pointer-events-none -z-10 animate-bounce duration-[15s]" />
+
+        {/* HERO SECTION WITH DYNAMIC GRADIENTS & ENTER ANIMATIONS */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           
           {/* Left Hero Content */}
@@ -354,21 +476,70 @@ export default function Home() {
             variants={containerVariants}
             className="lg:col-span-7 space-y-6 sm:space-y-8 text-center lg:text-left"
           >
+            <div className="space-y-4 relative group/hero overflow-visible">
+              {/* STUNNING INDIAN FLAG FLYING BACKGROUND VECTOR WITH LOW TRANSPARENCY & WAVE DISTORTION */}
+              <div 
+                className="absolute -left-1 sm:-left-3 top-[-30px] sm:top-[-45px] w-[300px] sm:w-[500px] h-[160px] sm:h-[280px] opacity-[0.06] pointer-events-none -z-10 select-none overflow-visible transition-opacity duration-500 group-hover/hero:opacity-[0.11]"
+                style={{ filter: "url(#indian-flag-wave)" }}
+              >
+                <svg viewBox="0 0 300 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="10" y1="5" x2="10" y2="195" stroke="#334155" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
+                  <circle cx="10" cy="5" r="4.5" fill="#64748b" />
+                  
+                  <g transform="translate(10, 10)">
+                    <rect x="0" y="0" width="260" height="42" fill="#FF9933" />
+                    <rect x="0" y="42" width="260" height="42" fill="#FFFFFF" />
+                    <rect x="0" y="84" width="260" height="42" fill="#128807" />
+                    
+                    <g transform="translate(130, 63)">
+                      <circle cx="0" cy="0" r="16" fill="none" stroke="#000080" strokeWidth="1.8" />
+                      <circle cx="0" cy="0" r="3" fill="#000080" />
+                      {Array.from({ length: 24 }).map((_, spokeIdx) => {
+                        const angle = (spokeIdx * 360) / 24;
+                        return (
+                          <line 
+                            key={spokeIdx}
+                            x1="0" 
+                            y1="0" 
+                            x2={16 * Math.cos((angle * Math.PI) / 180)} 
+                            y2={16 * Math.sin((angle * Math.PI) / 180)} 
+                            stroke="#000080" 
+                            strokeWidth="0.8" 
+                          />
+                        );
+                      })}
+                      {Array.from({ length: 24 }).map((_, dotIdx) => {
+                        const angle = (dotIdx * 360) / 24 + 7.5;
+                        return (
+                          <circle 
+                            key={dotIdx}
+                            cx={14.5 * Math.cos((angle * Math.PI) / 180)}
+                            cy={14.5 * Math.sin((angle * Math.PI) / 180)}
+                            r="0.5"
+                            fill="#000080"
+                          />
+                        );
+                      })}
+                    </g>
+                  </g>
+                </svg>
+              </div>
 
-            <div className="space-y-4">
+
+              
               <motion.h1 
                 variants={textRevealVariants}
-                className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-950 leading-[0.95] uppercase"
+                className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-950 leading-[0.95] uppercase relative z-10"
               >
                 Not Me <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-650 via-indigo-600 to-indigo-800">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-650 via-indigo-600 to-indigo-800 animate-gradient-shift">
                   But You
                 </span>
               </motion.h1>
               
               <motion.p 
                 variants={textRevealVariants}
-                className="text-slate-650 text-sm sm:text-base md:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed font-semibold"
+                className="text-slate-650 text-sm sm:text-base md:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed font-semibold text-pretty"
               >
                 Developing the collective social responsibility of youth. Program Units 36 and 94 at NSS College Ottapalam foster community living, dynamic medical campaigns, instant emergency blood relief, environmental restoration, and civic literacy campaigns with stellar impact.
               </motion.p>
@@ -380,16 +551,16 @@ export default function Home() {
               className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4"
             >
               {isLoggedIn ? (
-                <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-100/80 p-1.5 rounded-3xl border border-slate-200">
-                  <div className="px-5 py-2.5 bg-white text-slate-900 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-xs">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <span>Logged In: <strong className="text-indigo-600">{username}</strong> ({userRole})</span>
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/80 backdrop-blur-md p-2 rounded-3xl border border-slate-200 w-full sm:w-auto shadow-sm">
+                  <div className="px-5 py-2.5 bg-slate-950 text-white rounded-2xl text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs w-full sm:w-auto">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+                    <span>Active: <strong className="text-brand-300">{username}</strong> ({userRole})</span>
                   </div>
                   <Link 
                     to="/profile"
-                    className="w-full sm:w-auto h-11 px-6 text-xs text-indigo-600 hover:text-indigo-850 font-black uppercase tracking-widest flex items-center justify-center gap-1 cursor-pointer"
+                    className="w-full sm:w-auto h-11 px-6 text-xs text-indigo-600 hover:text-indigo-850 font-black uppercase tracking-widest flex items-center justify-center gap-1 cursor-pointer transition-colors"
                   >
-                    <span>Go to My Profile</span>
+                    <span>View Profile Room</span>
                     <ChevronRight size={14} className="stroke-[3px]" />
                   </Link>
                 </div>
@@ -397,14 +568,14 @@ export default function Home() {
                 <>
                   <Link 
                     to="/login"
-                    className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-brand-600 to-indigo-700 hover:from-white hover:to-white hover:text-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95 hover:translate-y-[-2px] hover:border-indigo-650 border border-transparent cursor-pointer"
+                    className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-brand-600 to-indigo-700 hover:from-white hover:to-white hover:text-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95 hover:translate-y-[-2px] border border-transparent hover:border-indigo-600 cursor-pointer"
                   >
                     <span>Secure Portal Sign-In</span>
                     <ArrowRight size={14} className="stroke-[3px]" />
                   </Link>
                   <Link 
                     to="/help"
-                    className="w-full sm:w-auto h-14 px-8 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-extrabold text-xs uppercase tracking-widest rounded-2xl transition flex items-center justify-center gap-2 hover:translate-y-[-2px] active:scale-95 cursor-pointer shadow-xs"
+                    className="w-full sm:w-auto h-14 px-8 bg-white hover:bg-slate-50 border border-slate-200 text-slate-705 font-extrabold text-xs uppercase tracking-widest rounded-2xl transition flex items-center justify-center gap-2 hover:translate-y-[-2px] active:scale-95 cursor-pointer shadow-xs"
                   >
                     <HelpCircle size={15} className="text-slate-500" />
                     <span>NSS Guidelines Portal</span>
@@ -423,12 +594,12 @@ export default function Home() {
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mt-1">Official Units</span>
               </div>
               <div>
-                <span className="text-2xl sm:text-3xl font-black text-brand-600 font-mono tracking-tight block">110+</span>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mt-1">Acclaimed Volunteers</span>
+                <span className="text-2xl sm:text-3xl font-black text-brand-600 font-mono tracking-tight block">100+</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mt-1">Enrolled Volunteers</span>
               </div>
               <div>
-                <span className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight block">Grade A</span>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mt-1">State Rank</span>
+                <span className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight block">U.O.C</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mt-1">University of Calicut</span>
               </div>
             </motion.div>
           </motion.div>
@@ -438,7 +609,7 @@ export default function Home() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-            className="lg:col-span-5 relative group hidden sm:block"
+            className="lg:col-span-5 relative group"
           >
             <div className="absolute -inset-3 bg-gradient-to-r from-brand-650 to-purple-600 rounded-[2.5rem] blur-2xl opacity-15 group-hover:opacity-25 transition duration-1000" />
             
@@ -452,7 +623,7 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
                 
-                {/* Embedded live sticker badge */}
+                {/* Embedded live status indicator */}
                 <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-md border border-white/10 px-3.5 py-1.5 rounded-xl text-white flex items-center gap-1.5 shadow-sm">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                   <span className="text-[9px] font-mono font-black uppercase tracking-widest">Campus Operations Live</span>
@@ -460,7 +631,7 @@ export default function Home() {
               </div>
 
               {/* Float Glassmorphic Badge */}
-              <div className="absolute -bottom-4 -left-4 bg-slate-900/98 backdrop-blur-xl border border-white/10 text-white p-5 rounded-3xl shadow-xl max-w-[260px] space-y-1 select-none pointer-events-none transform transition-transform duration-500 group-hover:translate-y-[-4px]">
+              <div className="absolute -bottom-4 -left-4 bg-slate-950/95 backdrop-blur-xl border border-white/10 text-white p-5 rounded-3xl shadow-xl max-w-[260px] space-y-1 select-none pointer-events-none transform transition-transform duration-500 group-hover:translate-y-[-4px]">
                 <div className="flex items-center gap-1.5">
                   <Star size={13} className="text-amber-400 fill-amber-400" />
                   <span className="text-[8px] font-black uppercase tracking-wider text-amber-300">National Youth Division</span>
@@ -495,7 +666,7 @@ export default function Home() {
                       </div>
                       <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">College Command & Verification Desk</h3>
                       <p className="text-slate-300 text-xs sm:text-sm max-w-3xl leading-relaxed">
-                        Welcome back, <strong>Principal Administration</strong>. Under Calicut University statutes, you have absolute operational oversight of NSS Units 36 and 94. Implement global parameters, verify certified rosters, deploy official campus circular directives, and access verified complaint reports.
+                        Welcome back, <strong>Principal Administration</strong>. Under University of Calicut statutes, you have absolute operational oversight of NSS Units 36 and 94. Implement global parameters, verify certified rosters, deploy official campus circular directives, and access verified complaint reports.
                       </p>
                     </div>
                     <Link
@@ -622,136 +793,79 @@ export default function Home() {
         </AnimatePresence>
 
         {/* AMRIT VOLUNTEER BLOOD HUB GRID (Ruby Spotlight Card) */}
-        <section id="amrit-blood-bank-card" className="relative">
+        <section id="amrit-blood-bank-card" className="relative select-none">
           <motion.div 
-            initial={{ opacity: 0, y: 35 }}
+            initial={{ opacity: 0, y: 25 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-100px' }}
-            transition={{ duration: 0.7 }}
-            className="bg-gradient-to-br from-red-650 via-rose-600 to-red-750 text-white rounded-3xl p-6 sm:p-10 shadow-xl overflow-hidden group"
+            transition={{ duration: 0.6 }}
+            className="bg-gradient-to-br from-red-650 via-rose-500 to-red-700 text-white rounded-3xl p-5 sm:p-7 shadow-lg overflow-hidden group"
           >
             {/* Design Gradients and dynamic typography watermark */}
             <div className="absolute top-0 right-0 w-[50%] h-[150%] bg-gradient-to-tr from-white/10 to-transparent -z-10 translate-x-[20%] -translate-y-[20%] blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-1/2 -left-1/4 w-[500px] h-[500px] bg-red-400/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute top-6 right-6 text-white/5 font-display text-[7rem] sm:text-[10rem] font-black select-none pointer-events-none uppercase tracking-tighter leading-none">
+            <div className="absolute -bottom-1/2 -left-1/4 w-[400px] h-[400px] bg-red-400/20 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute top-4 right-4 text-white/5 font-display text-[4rem] sm:text-[6rem] font-black select-none pointer-events-none uppercase tracking-tighter leading-none">
               AMRIT
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center relative z-10">
               
               {/* Left Side: Spotlight info */}
-              <div className="lg:col-span-7 space-y-5 text-center lg:text-left">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[9px] font-black uppercase tracking-[0.15em] mx-auto lg:mx-0">
+              <div className="lg:col-span-8 space-y-4 text-center lg:text-left">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[8.5px] font-black uppercase tracking-[0.15em] mx-auto lg:mx-0">
                   <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />
                   <span className="text-white">🔴 AMRIT CLINICAL COOPERATIVE INITIATIVE</span>
                 </div>
 
-                <div className="space-y-3">
-                  <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight leading-tight italic">
-                    Amrit Blood Bank <br />
-                    <span className="text-red-100 font-extrabold not-italic text-lg sm:text-2xl tracking-normal capitalize">Secure Emergency Donor Pool</span>
+                <div className="space-y-1.5">
+                  <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-tight italic">
+                    Amrit Blood Bank: <span className="text-red-100 font-extrabold not-italic text-sm sm:text-base tracking-normal capitalize">Secure Emergency Donor Pool</span>
                   </h2>
-                  <p className="text-red-50 text-xs sm:text-sm leading-relaxed font-semibold max-w-2xl mx-auto lg:mx-0">
-                    A secure, student-coordinated safety matrix organized by National Service Scheme Units 36 and 94 matches local emergencies, protecting verified donor profiles under statutory standards.
+                  <p className="text-red-50 text-[11px] leading-relaxed font-semibold max-w-2xl mx-auto lg:mx-0">
+                    A secure, student-coordinated safety matrix organized by Units 36 and 94 to match local emergencies, protecting verified donor profiles under statutory standards.
                   </p>
                 </div>
 
-                {/* Pillars / Features grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                  <div className="p-3 bg-white/8 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-2.5">
-                    <ShieldCheck size={16} className="text-red-250 shrink-0" />
-                    <div className="text-left">
-                      <span className="text-[9px] font-black uppercase tracking-wide block text-white">Full Privacy</span>
-                      <span className="text-[8px] font-semibold text-red-200 block font-sans">Credential Shielding</span>
-                    </div>
+                {/* Horizontal pillars/badges list to reduce vertical length */}
+                <div className="flex flex-wrap justify-center lg:justify-start gap-2 pt-0.5">
+                  <div className="px-2.5 py-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg flex items-center gap-1.5 text-[9px] font-bold">
+                    <ShieldCheck size={12} className="text-red-200" />
+                    <span>Credential Shielding</span>
                   </div>
-                  <div className="p-3 bg-white/8 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-2.5">
-                    <Activity size={16} className="text-red-250 shrink-0" />
-                    <div className="text-left">
-                      <span className="text-[9px] font-black uppercase tracking-wide block text-white">Direct Alerts</span>
-                      <span className="text-[8px] font-semibold text-red-200 block font-sans">Immediate Broadcast</span>
-                    </div>
+                  <div className="px-2.5 py-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg flex items-center gap-1.5 text-[9px] font-bold">
+                    <Activity size={12} className="text-red-200" />
+                    <span>Immediate Alerts</span>
                   </div>
-                  <div className="p-3 bg-white/8 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-2.5">
-                    <Award size={16} className="text-red-250 shrink-0" />
-                    <div className="text-left">
-                      <span className="text-[9px] font-black uppercase tracking-wide block text-white">Grade-A Hour</span>
-                      <span className="text-[8px] font-semibold text-red-200 block font-sans">NSS points approved</span>
-                    </div>
+                  <div className="px-2.5 py-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg flex items-center gap-1.5 text-[9px] font-bold">
+                    <Award size={12} className="text-red-200" />
+                    <span>NSS Points Approved</span>
                   </div>
-                </div>
-
-                {/* Action button triggers */}
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2">
-                  <Link
-                    to="/bloodbank"
-                    className="w-full sm:w-auto h-12 px-6 bg-white text-red-600 hover:bg-red-50 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 shadow-sm hover:translate-y-[-1px] active:scale-[0.98] cursor-pointer"
-                  >
-                    <Heart size={13} className="fill-current text-red-600 animate-pulse" />
-                    <span>Register as Donor</span>
-                  </Link>
-                  <Link
-                    to="/bloodbank"
-                    className="w-full sm:w-auto h-12 px-6 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-extrabold text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 hover:translate-y-[-1px] active:scale-[0.98] cursor-pointer"
-                  >
-                    <Droplets size={13} className="text-white" />
-                    <span>Request Board</span>
-                  </Link>
                 </div>
               </div>
 
-              {/* Right Side: Visual Interactive Donor Panel mock */}
-              <div className="lg:col-span-5 flex justify-center relative">
-                <div className="absolute -inset-2 bg-red-400/20 rounded-3xl blur-xl opacity-40 group-hover:opacity-60 transition duration-500 pointer-events-none" />
-                
-                <div className="relative bg-white/5 backdrop-blur-md p-5 rounded-3xl border border-white/15 shadow-lg max-w-sm w-full space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-mono tracking-widest text-red-200/80 font-black uppercase">COMMUNITY GRID</span>
-                    <span className="flex items-center gap-1 bg-red-500/30 px-2 py-0.5 border border-red-500/20 rounded text-[8px] font-black tracking-wider uppercase">
-                      <span className="w-1 bg-red-400 rounded-full animate-pulse" /> Live match
-                    </span>
-                  </div>
+              {/* Right Side: Action CTA & Status with elegant minimalist layout instead of bulky grid */}
+              <div className="lg:col-span-4 flex flex-col justify-center items-center lg:items-end gap-3.5 border-t lg:border-t-0 lg:border-l border-white/10 pt-4 lg:pt-0 lg:pl-6">
+                <div className="text-center lg:text-right space-y-0.5">
+                  <span className="text-[10px] font-mono tracking-widest text-red-200/80 font-black uppercase">OTTAPALAM REGISTRY</span>
+                  <div className="text-xl font-black font-mono tracking-tight text-white leading-none">100+ ACTIVE DONORS</div>
+                  <p className="text-[8.5px] text-red-100 font-semibold uppercase tracking-wider">Verified clinical response units</p>
+                </div>
 
-                  {/* Grid layout of blood groups */}
-                  <div className="grid grid-cols-4 gap-2 select-none">
-                    {[
-                      { grp: 'A+', count: '14' },
-                      { grp: 'B+', count: '22' },
-                      { grp: 'O+', count: '41' },
-                      { grp: 'AB+', count: '9' },
-                      { grp: 'A-', count: '3' },
-                      { grp: 'B-', count: '1' },
-                      { grp: 'O-', count: '5' },
-                      { grp: 'AB-', count: '0' }
-                    ].map((group) => {
-                      const hasDonors = parseInt(group.count) > 0;
-                      return (
-                        <div 
-                          key={group.grp}
-                          className={cn(
-                            "aspect-square rounded-xl border flex flex-col items-center justify-center p-2 transition-all duration-350",
-                            hasDonors 
-                              ? "bg-white/10 hover:bg-white/15 border-white/15 hover:border-white/35 text-white scale-100 hover:scale-[1.03] shadow-xs"
-                              : "bg-black/10 border-white/5 text-white/40 opacity-30 cursor-not-allowed"
-                          )}
-                        >
-                          <Droplets size={13} className={cn("mb-0.5", hasDonors ? "text-red-300" : "text-white/20")} />
-                          <span className="text-[10px] font-black tracking-tight block leading-none">{group.grp}</span>
-                          <span className="text-[6.5px] font-mono font-bold text-red-150 block">{group.count} Active</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="bg-red-950/20 border border-red-500/15 p-3 rounded-xl space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <ShieldCheck size={11} className="text-red-300" />
-                      <span className="text-[8.5px] font-black uppercase tracking-wider text-red-200">Ottapalam Registry</span>
-                    </div>
-                    <p className="text-[9px] text-red-100/90 leading-normal font-semibold">
-                      Our platform automatically routes verified emergency alerts under absolute privacy rules.
-                    </p>
-                  </div>
+                <div className="flex flex-row items-center gap-2.5 w-full sm:w-auto">
+                  <Link
+                    to="/bloodbank"
+                    className="flex-1 sm:flex-initial h-10 px-4 bg-white text-red-650 hover:bg-red-50 font-black text-[10px] uppercase tracking-widest rounded-lg transition duration-200 flex items-center justify-center gap-1.5 shadow-sm hover:translate-y-[-1px] active:scale-[0.98] cursor-pointer"
+                  >
+                    <Heart size={11} className="fill-current text-red-600 animate-pulse" />
+                    <span>Register</span>
+                  </Link>
+                  <Link
+                    to="/bloodbank"
+                    className="flex-1 sm:flex-initial h-10 px-4 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-extrabold text-[10px] uppercase tracking-widest rounded-lg transition duration-200 flex items-center justify-center gap-1.5 hover:translate-y-[-1px] active:scale-[0.98] cursor-pointer"
+                  >
+                    <Droplets size={11} className="text-white" />
+                    <span>Request Board</span>
+                  </Link>
                 </div>
               </div>
 
@@ -759,11 +873,149 @@ export default function Home() {
           </motion.div>
         </section>
 
+        {/* LIVE ACTIVITY SNAPSHOT GALLERY CAROUSEL */}
+        <section className="space-y-6 relative select-none">
+          <div className="absolute top-[20%] left-[-10%] w-72 h-72 bg-brand-500/5 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse" />
+          
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-5">
+            <div>
+              <span className="text-[10px] font-black tracking-widest text-[#2563EB] uppercase">Visual Activity Stream</span>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-950 uppercase tracking-tight">Active Program Gallery</h3>
+            </div>
+            
+            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+              {/* Browse full gallery link */}
+              <Link 
+                to="/gallery" 
+                className="text-xs font-black uppercase tracking-wider text-brand-600 hover:text-indigo-650 transition-colors flex items-center gap-1.5 group py-2"
+              >
+                <span>Launch Full Grid</span>
+                <ArrowRight size={13} className="stroke-[3.5px] group-hover:translate-x-1.5 transition-transform duration-350" />
+              </Link>
+              
+              {/* Manual scrolling micro controllers */}
+              <div className="hidden sm:flex items-center gap-2">
+                <button 
+                  onClick={scrollLeftGallery}
+                  className="w-10 h-10 rounded-full border border-slate-250 bg-white hover:bg-slate-50 text-slate-650 hover:text-slate-900 transition flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                  aria-label="Scroll Left"
+                >
+                  <ChevronLeft size={16} className="stroke-[2.5]" />
+                </button>
+                <button 
+                  onClick={scrollRightGallery}
+                  className="w-10 h-10 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-650 hover:text-slate-900 transition flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                  aria-label="Scroll Right"
+                >
+                  <ChevronRight size={16} className="stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Scrolling Deck */}
+          <div className="relative group/deck">
+            <div 
+              ref={scrollContainerRef}
+              onMouseEnter={() => setIsGalleryPaused(true)}
+              onMouseLeave={() => setIsGalleryPaused(false)}
+              className="flex gap-6 overflow-x-auto pb-4 scroll-smooth scrollbar-none snap-x snap-mandatory pointer-events-auto"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {(galleryImages.length > 0 ? galleryImages : fallbackGallery).map((pic, idx) => (
+                <div 
+                  key={idx}
+                  className="w-[290px] sm:w-[350px] shrink-0 bg-white border border-slate-200 hover:border-brand-200 transition-all duration-350 snap-start flex flex-col justify-between group/card relative rounded-[2rem] p-4 shadow-sm hover:shadow-md"
+                >
+                  {/* Aspect video img wrap */}
+                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-100 shadow-xs mb-4">
+                    <img 
+                      src={pic.src || pic.url} 
+                      alt={pic.caption || pic.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-108"
+                      referrerPolicy="no-referrer"
+                    />
+                    
+                    {/* Dark overlay protective layer inside the glass box */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
+
+                    {/* Category overlay label */}
+                    {pic.location && (
+                      <span className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border border-white/10">
+                        {pic.location}
+                      </span>
+                    )}
+
+                    {/* Date label overlay */}
+                    {pic.date && (
+                      <span className="absolute bottom-3 right-3 bg-brand-650 text-white text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs">
+                        {pic.date}
+                      </span>
+                    )}
+
+                    {/* View overlay icon */}
+                    <div className="absolute inset-0 bg-brand-700/10 backdrop-blur-[2px] opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <Link 
+                        to="/gallery" 
+                        className="p-3 bg-white rounded-full text-brand-650 shadow-md transform translate-y-2 group-hover/card:translate-y-0 transition-transform duration-300"
+                        title="View Full Size Image"
+                      >
+                        <ImageIcon size={16} />
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Caption & Location metadata info */}
+                  <div className="space-y-1.5 px-1.5 pb-1">
+                    <h4 className="text-[12.5px] font-black text-slate-950 uppercase tracking-tight line-clamp-1 group-hover/card:text-brand-650 transition-colors">
+                      {pic.caption || pic.title}
+                    </h4>
+                    <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed line-clamp-2">
+                      Organized and published directly by the Admin Officers core to demonstrate verified social stewardship.
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Hint overlay for scrolling */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-full bg-gradient-to-l from-slate-50/50 to-transparent pointer-events-none group-hover/deck:opacity-0 transition-opacity" />
+          </div>
+        </section>
+
+        {/* MOBILE FEED TAB CONTROL: Best-in-law mobile touch interaction for responsive clarity */}
+        <div className="lg:hidden flex p-1.5 bg-slate-100 rounded-2xl border border-slate-250/60 select-none">
+          <button
+            onClick={() => setMobileFeedTab('diaries')}
+            className={cn(
+              "flex-1 py-3 text-[11px] font-black uppercase tracking-wider rounded-[14px] transition-all duration-300 flex items-center justify-center gap-2",
+              mobileFeedTab === 'diaries'
+                ? "bg-white text-brand-650 shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
+            )}
+          >
+            <BookOpen size={13} className={mobileFeedTab === 'diaries' ? "text-brand-650" : "text-slate-400"} />
+            <span>Program Diaries</span>
+          </button>
+          <button
+            onClick={() => setMobileFeedTab('notices')}
+            className={cn(
+              "flex-1 py-3 text-[11px] font-black uppercase tracking-wider rounded-[14px] transition-all duration-300 flex items-center justify-center gap-2",
+              mobileFeedTab === 'notices'
+                ? "bg-white text-brand-650 shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
+            )}
+          >
+            <Bell size={13} className={mobileFeedTab === 'notices' ? "text-brand-650 animate-bounce" : "text-slate-400"} />
+            <span>Notice Bulletins</span>
+          </button>
+        </div>
+
         {/* DOUBLE COLUMN FEATURE SECTION - Interactive diaries on left + Announcements feed on right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start mt-4 lg:mt-0">
           
           {/* Active Program Diaries (Left Column 60%) */}
-          <section className="lg:col-span-7 space-y-8">
+          <section className={cn("lg:col-span-7 space-y-8", mobileFeedTab === 'diaries' ? 'block' : 'hidden lg:block')}>
             <div className="border-b border-slate-200 pb-4 flex items-end justify-between">
               <div>
                 <span className="text-[10px] font-black tracking-widest text-[#2563EB] uppercase">Interactive Archives</span>
@@ -870,7 +1122,7 @@ export default function Home() {
           </section>
 
           {/* College Notice Bulletins (Direct Announcements 40%) */}
-          <aside className="lg:col-span-5 space-y-8">
+          <aside className={cn("lg:col-span-5 space-y-8", mobileFeedTab === 'notices' ? 'block' : 'hidden lg:block')}>
             <div className="border-b border-slate-200 pb-4">
               <span className="text-[10px] font-black tracking-widest text-[#2563EB] uppercase">Direct Announcements</span>
               <h3 className="text-2xl font-black text-slate-1000 uppercase tracking-tight">College Notice Bulletins</h3>
@@ -1011,7 +1263,7 @@ export default function Home() {
         <section className="bg-slate-950 text-white rounded-[2.8rem] p-8 sm:p-12 border border-slate-900 shadow-2xl overflow-hidden relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center divide-y md:divide-y-0 md:divide-x divide-white/10 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center divide-y md:divide-y-0 md:divide-x divide-white/10 relative z-10">
             <div className="space-y-1.5 text-center md:text-left">
               <span className="text-[10px] font-black text-brand-400 uppercase tracking-[0.2em] block">NSS Framework</span>
               <h4 className="text-lg font-black uppercase italic tracking-tight text-white">College Affiliation Metrics</h4>
@@ -1027,15 +1279,9 @@ export default function Home() {
             </div>
 
             <div className="pt-6 md:pt-0 md:pl-10 text-center md:text-left space-y-1">
-              <span className="text-3xl sm:text-4xl font-mono font-black tracking-tight text-emerald-400 block">110+</span>
+              <span className="text-3xl sm:text-4xl font-mono font-black tracking-tight text-emerald-400 block">100+</span>
               <p className="text-[9px] font-black text-slate-500 tracking-widest uppercase block">Enrolled Active Students</p>
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Calicut University Approved</span>
-            </div>
-
-            <div className="pt-6 md:pt-0 md:pl-10 text-center md:text-left space-y-1">
-              <span className="text-3xl sm:text-4xl font-mono font-black tracking-tight text-amber-400 block">Grade-A</span>
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Accreditation status</p>
-              <span className="text-[10px] text-slate-500 font-semibold block uppercase">State Service Excellence</span>
+              <span className="text-[10px] text-slate-500 font-semibold block uppercase">University of Calicut Approved</span>
             </div>
           </div>
         </section>
@@ -1058,7 +1304,7 @@ export default function Home() {
                 },
                 { 
                   q: "Under which administrative body are these units registered?", 
-                  a: "NSS College Ottapalam's Unit 36 and Unit 94 are affiliated under the Calicut University NSS Cell. They operate strictly matching the guidelines issued by the Ministry of Youth Affairs & Sports, India." 
+                  a: "NSS College Ottapalam's Unit 36 and Unit 94 are affiliated under the University of Calicut NSS Cell. They operate strictly matching the guidelines issued by the Ministry of Youth Affairs & Sports, India." 
                 },
                 {
                   q: "How do volunteers accumulate activity points?",
@@ -1150,7 +1396,7 @@ export default function Home() {
               <div className="space-y-1">
                 <h4 className="text-white font-black text-sm uppercase tracking-wider leading-none">NSS College Ottapalam</h4>
                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest pt-0.5">National Service Scheme | College Units 36 & 94</p>
-                <p className="text-[9.5px] text-slate-600 font-semibold uppercase tracking-wider">Affiliated to Calicut University • NAAC Grade A Accredited</p>
+                <p className="text-[9.5px] text-slate-600 font-semibold uppercase tracking-wider">Affiliated to University of Calicut • NAAC Grade A Accredited</p>
               </div>
             </div>
             

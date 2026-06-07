@@ -15,6 +15,7 @@ import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
 import { getProfilePhoto, saveProfilePhoto } from '@/src/lib/firebaseClient';
 import BackButton from '../components/layout/BackButton';
+import ImageCropModal from '../components/profile/ImageCropModal';
 
 interface QuizAttempt {
   id: string;
@@ -108,33 +109,46 @@ export default function Profile() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoSuccessMsg, setPhotoSuccessMsg] = useState<string | null>(null);
+  const [rawPhotoSrc, setRawPhotoSrc] = useState<string | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
 
   const storedUser = localStorage.getItem('user') || '';
   const storedName = localStorage.getItem('name') || 'Volunteer';
   const storedUserId = localStorage.getItem('userId') || '';
   const storedUnit = localStorage.getItem('unit') || 'Unit 36 & 94';
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    // Validate file type
     if (!selectedFile.type.startsWith('image/')) {
       setPhotoError("Only image files (.jpg, .png, etc.) are allowed.");
       setPhotoSuccessMsg(null);
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawPhotoSrc(reader.result as string);
+      setShowCropModal(true);
+      e.target.value = ''; // Reset input value to allow selecting same file again
+    };
+    reader.onerror = () => {
+      setPhotoError("Failed to read selected image file.");
+    };
+    reader.readAsDataURL(selectedFile);
+  };
+
+  const handleCropSave = async (croppedBase64: string) => {
+    setShowCropModal(false);
+    setRawPhotoSrc(null);
     setPhotoUploading(true);
     setPhotoError(null);
     setPhotoSuccessMsg(null);
 
     try {
-      // 1. Compress Image client-side directly to Base64
-      console.log(`Original image size: ${(selectedFile.size / 1024).toFixed(1)} KB`);
-      const base64Data = await compressImageToBase64(selectedFile, 250, 250, 0.65);
-      const compressedSizeKb = (base64Data.length * 0.75 / 1024).toFixed(1);
-      console.log(`Compressed base64 size: ${compressedSizeKb} KB`);
+      const compressedSizeKb = (croppedBase64.length * 0.75 / 1024).toFixed(1);
+      console.log(`Cropped base64 size: ${compressedSizeKb} KB`);
 
       const username = profile?.username || storedUser;
 
@@ -143,13 +157,13 @@ export default function Profile() {
       }
 
       // Save the picture URL (base64 encoded jpeg) under the 'profiles' collection in the Firestore Database
-      await saveProfilePhoto(username, base64Data);
+      await saveProfilePhoto(username, croppedBase64);
 
       // Successfully updated profile picture state
-      setProfile(prev => prev ? { ...prev, avatar_url: base64Data } : null);
-      setPhotoSuccessMsg(`Profile picture compressed and stored inside Firebase Database! Size reduced from ${(selectedFile.size / 1024).toFixed(1)} KB down to ${compressedSizeKb} KB.`);
+      setProfile(prev => prev ? { ...prev, avatar_url: croppedBase64 } : null);
+      setPhotoSuccessMsg(`Profile picture cropped and saved inside Firebase Database! Size optimized to ${compressedSizeKb} KB.`);
     } catch (err: any) {
-      console.error("Avatar compression/database save failed:", err);
+      console.error("Avatar crop save failed:", err);
       setPhotoError(err.message || "Save failed. Please check connection.");
     } finally {
       setPhotoUploading(false);
@@ -569,6 +583,10 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
                     alt={profile?.full_name} 
                     className="w-24 h-24 rounded-[2rem] object-cover border-4 border-indigo-100 shadow-lg shadow-brand-500/10"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.full_name || 'V')}&background=4f46e5&color=fff&size=256`;
+                    }}
                   />
                 ) : (
                   <div className="w-24 h-24 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-[2rem] flex items-center justify-center text-white text-4xl font-black shadow-lg shadow-brand-500/20 select-none">
@@ -797,6 +815,10 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
                         alt="Avatar Preview" 
                         className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-sm"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.full_name || 'V')}&background=4f46e5&color=fff&size=128`;
+                        }}
                       />
                     ) : (
                       <div className="w-16 h-16 bg-slate-200 text-slate-500 rounded-2xl flex items-center justify-center text-xl font-bold uppercase">
@@ -1235,6 +1257,16 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
           </div>
         )}
       </AnimatePresence>
+
+      <ImageCropModal
+        isOpen={showCropModal}
+        imageSrc={rawPhotoSrc}
+        onClose={() => {
+          setShowCropModal(false);
+          setRawPhotoSrc(null);
+        }}
+        onCropSave={handleCropSave}
+      />
 
     </div>
   );
