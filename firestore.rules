@@ -19,6 +19,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // 3. Gallery collection rules
+    match /gallery/{itemId} {
+      // Allow public reads to see community activities.
+      allow read: if true;
+      allow create, update: if isValidGalleryItem(request.resource.data);
+      allow delete: if true;
+    }
+
     // Reuseable, hardened helper functions
     function isSignedIn() {
       return request.auth != null;
@@ -41,6 +49,21 @@ service cloud.firestore {
         && data.avatar_url.size() <= 1000000
         && data.updatedAt is string 
         && data.updatedAt.size() <= 100;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.url is string 
+        && data.url.size() >= 5 
+        && data.url.size() <= 1000000
+        && data.title is string 
+        && data.title.size() >= 1 
+        && data.title.size() <= 1000
+        && data.date is string 
+        && data.date.size() <= 100
+        && data.category is string 
+        && data.category.size() <= 100
+        && data.created_at is string 
+        && data.created_at.size() <= 100;
     }
   }
 }

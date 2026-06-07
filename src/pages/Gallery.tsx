@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, X, ZoomIn, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/src/lib/firebaseClient';
 import BackButton from '../components/layout/BackButton';
 
 interface GalleryItem {
@@ -16,115 +18,71 @@ export default function Gallery() {
   const [images, setImages] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchGallery = async () => {
-    try {
-      setLoading(true);
-      let mergedList: any[] = [];
-      const urlsSeen = new Set<string>();
+  const fallbackGallery: GalleryItem[] = [
+    {
+      src: "https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=800&auto=format&fit=crop",
+      caption: "NSS Mega Campus Cleaning & Green Drive",
+      date: "04 Jun 2026",
+      location: "Ottapalam Campus"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1615461066841-6116ecdccd04?q=80&w=800&auto=format&fit=crop",
+      caption: "Emergency Medical & Blood Donation Camp",
+      date: "28 May 2026",
+      location: "Academic Hall"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop",
+      caption: "Interactive Literacy Outreach & Study Kits Supply",
+      date: "15 May 2026",
+      location: "Orphanage Annex"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop",
+      caption: "World Environment Day Tree Saplings Initiative",
+      date: "05 Jun 2026",
+      location: "Municipal Ground"
+    },
+    {
+      src: "https://images.unsplash.com/photo-1469571486040-afbef0cd37bc?q=80&w=800&auto=format&fit=crop",
+      caption: "NSS Special Village Survey & Digital Adoption Camp",
+      date: "12 Apr 2026",
+      location: "Ottapalam Village"
+    }
+  ];
 
-      // 1. Fetch from Supabase
-      try {
-        const { data, error } = await supabase
-          .from('gallery')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (!error && data) {
-          data.forEach(x => {
-            const url = (x.url || '').trim();
-            if (url && !urlsSeen.has(url)) {
-              urlsSeen.add(url);
-              mergedList.push({
-                src: url,
-                caption: x.title || 'NSS Activity',
-                date: x.date || (x.created_at ? new Date(x.created_at).toLocaleDateString('en-GB') : 'Recent Activity'),
-                location: x.category || 'Ottapalam Campus',
-                rawDate: x.date || x.created_at || ''
-              });
-            }
+  useEffect(() => {
+    setLoading(true);
+    // Subscribe to realtime gallery updates (Firestore onSnapshot) across all environments including GitHub Pages
+    const galleryQuery = query(collection(db, 'gallery'), orderBy('created_at', 'desc'));
+    const unsubscribeGallery = onSnapshot(galleryQuery, (snapshot) => {
+      const liveList: GalleryItem[] = [];
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data();
+        if (item.url) {
+          liveList.push({
+            src: item.url,
+            caption: item.title || 'NSS Activity',
+            date: item.date || 'Recent Activity',
+            location: item.category || 'Ottapalam Campus'
           });
         }
-      } catch (spErr) {
-        console.warn('Supabase gallery table load failed in main gallery page:', spErr);
-      }
-
-      // 2. Fetch from local endpoint
-      try {
-        const res = await fetch('/api/public-gallery');
-        if (res.ok) {
-          const resData = await res.json();
-          if (resData.success && resData.list) {
-            resData.list.forEach((x: any) => {
-              const url = (x.url || '').trim();
-              if (url && !urlsSeen.has(url)) {
-                urlsSeen.add(url);
-                mergedList.push({
-                  src: url,
-                  caption: x.title || 'NSS Activity',
-                  date: x.date || 'Recent Activity',
-                  location: x.category || 'Ottapalam Campus',
-                  rawDate: x.date || ''
-                });
-              }
-            });
-          }
-        }
-      } catch (localErr) {
-        console.warn('Local API fallback error in main gallery page:', localErr);
-      }
-
-      // 3. Sort merged list by Date descending
-      mergedList.sort((a, b) => {
-        const ad = a.rawDate ? new Date(a.rawDate).getTime() : 0;
-        const bd = b.rawDate ? new Date(b.rawDate).getTime() : 0;
-        return bd - ad;
       });
 
-      // 4. Default fallback sample pictures if absolutely nothing has been custom published by administrators yet
-      if (mergedList.length === 0) {
-        setImages([
-          {
-            src: "https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=800&auto=format&fit=crop",
-            caption: "NSS Mega Campus Cleaning & Green Drive",
-            date: "04 Jun 2026",
-            location: "Ottapalam Campus"
-          },
-          {
-            src: "https://images.unsplash.com/photo-1615461066841-6116ecdccd04?q=80&w=800&auto=format&fit=crop",
-            caption: "Emergency Medical & Blood Donation Camp",
-            date: "28 May 2026",
-            location: "Academic Hall"
-          },
-          {
-            src: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop",
-            caption: "Interactive Literacy Outreach & Study Kits Supply",
-            date: "15 May 2026",
-            location: "Orphanage Annex"
-          },
-          {
-            src: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop",
-            caption: "World Environment Day Tree Saplings Initiative",
-            date: "05 Jun 2026",
-            location: "Municipal Ground"
-          },
-          {
-            src: "https://images.unsplash.com/photo-1469571486040-afbef0cd37bc?q=80&w=800&auto=format&fit=crop",
-            caption: "NSS Special Village Survey & Digital Adoption Camp",
-            date: "12 Apr 2026",
-            location: "Ottapalam Village"
-          }
-        ]);
+      if (liveList.length === 0) {
+        setImages(fallbackGallery);
       } else {
-        setImages(mergedList);
+        setImages(liveList);
       }
-    } catch (err) {
-      console.error('Core gallery fetch and compilation failed:', err);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (error) => {
+      console.warn("Firestore gallery subscription failed: ", error);
+      setImages(fallbackGallery);
+      setLoading(false);
+    });
 
-  useEffect(() => { fetchGallery(); }, []);
+    return () => unsubscribeGallery();
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 animate-fade-in">

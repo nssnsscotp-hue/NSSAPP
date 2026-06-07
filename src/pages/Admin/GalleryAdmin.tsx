@@ -8,6 +8,8 @@ import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { db } from '@/src/lib/firebaseClient';
 import firebaseConfig from '../../../firebase-applet-config.json';
 
 // Initialize Firebase Storage
@@ -242,21 +244,43 @@ export default function GalleryAdmin() {
         formData.append("file", compressedFile);
         formData.append("folder", "gallery_photos");
 
-        const response = await fetch('/api/firebase/upload', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Server upload proxy failed.");
+        let response = null;
+        try {
+          response = await fetch('/api/firebase/upload', {
+            method: 'POST',
+            body: formData
+          });
+        } catch (fetchErr) {
+          console.warn("Server upload proxy unreachable (possibly running on a static host like GitHub Pages). Falling back to direct client-side Firebase Storage upload:", fetchErr);
         }
 
-        const resData = await response.json();
-        if (resData.success && resData.url) {
-          resolvedUrl = resData.url;
+        if (response && response.ok) {
+          const resData = await response.json();
+          if (resData.success && resData.url) {
+            resolvedUrl = resData.url;
+          } else {
+            throw new Error("Invalid response from storage proxy.");
+          }
         } else {
-          throw new Error("Invalid response from storage proxy.");
+          // Direct client-side Firebase Storage upload fallback (perfect for GitHub Pages)
+          console.log("Executing direct client-side Firebase Storage upload...");
+          const fileName = `gallery_photos/${Date.now()}_${compressedFile.name || 'uploaded_image.jpg'}`;
+          const storageRef = ref(storage, fileName);
+          const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+          await new Promise<void>((resolve, reject) => {
+            uploadTask.on('state_changed',
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                setUploadProgressMsg(`Cloud Storage upload: ${progress}%`);
+              },
+              (err) => reject(err),
+              () => resolve()
+            );
+          });
+
+          resolvedUrl = await getDownloadURL(storageRef);
+          console.log("Direct client-side upload complete. URL:", resolvedUrl);
         }
 
       } catch (uploadErr: any) {
@@ -280,6 +304,20 @@ export default function GalleryAdmin() {
 
     // Now insert path into Supabase gallery table (falls back to local backend index if missing)
     try {
+      // 0. Dual-Sync into Firebase Firestore for real-time listener support anywhere (including GitHub Pages)
+      try {
+        await addDoc(collection(db, 'gallery'), {
+          url: resolvedUrl,
+          title: newItem.title.trim(),
+          date: newItem.date,
+          category: newItem.category,
+          created_at: new Date().toISOString()
+        });
+        console.log("Activity gallery card inserted into Firestore successfully.");
+      } catch (fsWriteErr) {
+        console.warn("Firestore secondary sync failed:", fsWriteErr);
+      }
+
       // Ensure session for RLS
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) await supabase.auth.signInAnonymously();
@@ -377,6 +415,21 @@ export default function GalleryAdmin() {
       // Ensure session for RLS
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) await supabase.auth.signInAnonymously();
+
+      // 0. Dual-Sync Delete from Firebase Firestore
+      if (targetedItem?.url) {
+        try {
+          const { query, where, getDocs } = await import('firebase/firestore');
+          const galleryQuery = query(collection(db, 'gallery'), where('url', '==', targetedItem.url));
+          const querySnap = await getDocs(galleryQuery);
+          querySnap.forEach(async (docRef) => {
+            await deleteDoc(docRef.ref);
+            console.log("Deleted matching gallery item from Firestore.");
+          });
+        } catch (fsDelErr) {
+          console.warn("Firestore delete failed:", fsDelErr);
+        }
+      }
 
       // Delete from Firebase Storage first if applicable
       if (isFirebaseStorage && targetedItem?.url) {

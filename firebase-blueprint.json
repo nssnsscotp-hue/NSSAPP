@@ -20,12 +20,44 @@
         }
       },
       "required": ["username", "avatar_url", "updatedAt"]
+    },
+    "GalleryItem": {
+      "title": "Gallery Item",
+      "description": "NSS Activities gallery item details stored in the Firebase database",
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Item image URL"
+        },
+        "title": {
+          "type": "string",
+          "description": "Caption / Title of the image activity"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date or subtitle description"
+        },
+        "category": {
+          "type": "string",
+          "description": "Activity division, e.g. Category or Campus venue"
+        },
+        "created_at": {
+          "type": "string",
+          "description": "Timestamp when added"
+        }
+      },
+      "required": ["url", "title", "date", "category", "created_at"]
     }
   },
   "firestore": {
     "profiles": {
       "schema": "ProfilePhoto",
       "description": "Collocated profiles matching users for picture sync"
+    },
+    "gallery": {
+      "schema": "GalleryItem",
+      "description": "Public activity gallery posts allowing real-time sync"
     }
   }
 }

@@ -12,6 +12,8 @@ import {
 import { Highlight } from '@/src/pages/types';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/src/lib/firebaseClient';
 
 export default function Home() {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -155,84 +157,7 @@ export default function Home() {
           })));
         }
 
-        // 4. Fetch live administrative uploaded gallery with unified merging & fallback resilience
-        try {
-          let mergedList: any[] = [];
-          const urlsSeen = new Set<string>();
-
-          // Try fetching from Supabase first
-          try {
-            const { data: galleryData, error: galleryError } = await supabase
-              .from('gallery')
-              .select('*')
-              .order('created_at', { ascending: false });
-            
-            if (!galleryError && galleryData) {
-              galleryData.forEach(x => {
-                const url = (x.url || '').trim();
-                if (url && !urlsSeen.has(url)) {
-                  urlsSeen.add(url);
-                  mergedList.push({
-                    id: x.id,
-                    src: url,
-                    caption: x.title || 'NSS Activity',
-                    date: x.date || (x.created_at ? new Date(x.created_at).toLocaleDateString('en-GB') : 'Recent Activity'),
-                    location: x.category || 'Ottapalam Campus',
-                    rawDate: x.date || x.created_at || ''
-                  });
-                }
-              });
-            } else if (galleryError) {
-              console.warn('Supabase gallery query returned error on home:', galleryError.message);
-            }
-          } catch (spErr) {
-            console.warn('Exception querying Supabase gallery:', spErr);
-          }
-
-          // Then fetch from local fallback API
-          try {
-            const res = await fetch('/api/public-gallery');
-            if (res.ok) {
-              const resData = await res.json();
-              if (resData.success && resData.list) {
-                resData.list.forEach((x: any) => {
-                  const url = (x.url || '').trim();
-                  if (url && !urlsSeen.has(url)) {
-                    urlsSeen.add(url);
-                    mergedList.push({
-                      id: x.id,
-                      src: url,
-                      caption: x.title || 'NSS Activity',
-                      date: x.date || 'Recent Activity',
-                      location: x.category || 'Ottapalam Campus',
-                      rawDate: x.date || ''
-                    });
-                  }
-                });
-              }
-            }
-          } catch (localErr) {
-            console.warn('Local API gallery fetch error:', localErr);
-          }
-
-          // Sort merged list by Date descending
-          mergedList.sort((a, b) => {
-            const ad = a.rawDate ? new Date(a.rawDate).getTime() : 0;
-            const bd = b.rawDate ? new Date(b.rawDate).getTime() : 0;
-            return bd - ad; // descending order
-          });
-
-          // Fallback static items only if absolutely no records are posted/fetched anywhere
-          if (mergedList.length === 0) {
-            setGalleryImages(fallbackGallery);
-          } else {
-            // Limit to 12 items for home feed performance
-            setGalleryImages(mergedList.slice(0, 12));
-          }
-        } catch (gErr) {
-          console.warn('Catch error while fetching merged gallery images for Home page:', gErr);
-          setGalleryImages(fallbackGallery);
-        }
+        // 4. Live activity gallery is managed below via real-time Firestore onSnapshot listener
       } catch (err) {
         console.error('Home data load failed', err);
       } finally {
@@ -241,6 +166,35 @@ export default function Home() {
     };
 
     fetchHomeData();
+
+    // Subscribe to realtime gallery updates (Firestore onSnapshot) across all environments including GitHub Pages
+    const galleryQuery = query(collection(db, 'gallery'), orderBy('created_at', 'desc'));
+    const unsubscribeGallery = onSnapshot(galleryQuery, (snapshot) => {
+      const liveList: any[] = [];
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data();
+        if (item.url) {
+          liveList.push({
+            id: docSnap.id,
+            src: item.url,
+            caption: item.title || 'NSS Activity',
+            date: item.date || 'Recent Activity',
+            location: item.category || 'Ottapalam Campus',
+            rawDate: item.created_at || ''
+          });
+        }
+      });
+
+      if (liveList.length === 0) {
+        setGalleryImages(fallbackGallery);
+      } else {
+        // Limit to 12 items for home feed performance page layout
+        setGalleryImages(liveList.slice(0, 12));
+      }
+    }, (error) => {
+      console.warn("Firestore gallery subscription failed, using fallback:", error);
+      setGalleryImages(fallbackGallery);
+    });
 
     // Subscribe to realtime updates
     const channel = supabase
@@ -252,6 +206,7 @@ export default function Home() {
 
     return () => {
       supabase.removeChannel(channel);
+      unsubscribeGallery();
     };
   }, []);
 
