@@ -8,7 +8,7 @@ import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { collection, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/src/lib/firebaseClient';
 import firebaseConfig from '../../../firebase-applet-config.json';
 
@@ -122,7 +122,7 @@ export default function GalleryAdmin() {
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
-  const fetchGallery = async () => {
+  const fetchBackupGallery = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -167,8 +167,37 @@ export default function GalleryAdmin() {
     }
   };
 
-  useEffect(() => { 
-    fetchGallery(); 
+  useEffect(() => {
+    setLoading(true);
+    // Subscribe to realtime gallery updates (Firestore onSnapshot) across all environments including GitHub Pages
+    const galleryQuery = query(collection(db, 'gallery'), orderBy('created_at', 'desc'));
+    const unsubscribeGallery = onSnapshot(galleryQuery, (snapshot) => {
+      const liveList: GalleryItem[] = [];
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data();
+        if (item.url) {
+          liveList.push({
+            id: docSnap.id,
+            url: item.url,
+            title: item.title || 'NSS Activity',
+            date: item.date || 'Recent Activity',
+            category: item.category || 'Ottapalam Campus'
+          });
+        }
+      });
+      
+      if (liveList.length > 0) {
+        setItems(liveList);
+        setLoading(false);
+      } else {
+        fetchBackupGallery();
+      }
+    }, (error) => {
+      console.warn("Firestore gallery subscription failed: ", error);
+      fetchBackupGallery();
+    });
+
+    return () => unsubscribeGallery();
   }, []);
 
   // Handlers for drag & drop
@@ -303,17 +332,19 @@ export default function GalleryAdmin() {
     }
 
     // Now insert path into Supabase gallery table (falls back to local backend index if missing)
+    let firestoreSuccess = false;
     try {
       // 0. Dual-Sync into Firebase Firestore for real-time listener support anywhere (including GitHub Pages)
       try {
         await addDoc(collection(db, 'gallery'), {
           url: resolvedUrl,
           title: newItem.title.trim(),
-          date: newItem.date,
-          category: newItem.category,
+          date: newItem.date || '',
+          category: newItem.category || '',
           created_at: new Date().toISOString()
         });
         console.log("Activity gallery card inserted into Firestore successfully.");
+        firestoreSuccess = true;
       } catch (fsWriteErr) {
         console.warn("Firestore secondary sync failed:", fsWriteErr);
       }
@@ -333,20 +364,27 @@ export default function GalleryAdmin() {
       
       if (error) {
         console.warn("Supabase gallery insert failed, executing local metadata routing:", error.message);
-        const localRes = await fetch('/api/public-gallery', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            url: resolvedUrl,
-            title: newItem.title.trim(),
-            date: newItem.date,
-            category: newItem.category
-          })
-        });
+        try {
+          const localRes = await fetch('/api/public-gallery', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: resolvedUrl,
+              title: newItem.title.trim(),
+              date: newItem.date,
+              category: newItem.category
+            })
+          });
 
-        if (!localRes.ok) {
-          const localErr = await localRes.json();
-          throw new Error(localErr.error || "Local cache write failed.");
+          if (!localRes.ok && !firestoreSuccess) {
+            const localErr = await localRes.json();
+            throw new Error(localErr.error || "Local cache write failed.");
+          }
+        } catch (localPostErr) {
+          console.warn("Local cache POST bypassed on static environment:", localPostErr);
+          if (!firestoreSuccess) {
+            throw localPostErr;
+          }
         }
       }
 
@@ -356,9 +394,20 @@ export default function GalleryAdmin() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      await fetchGallery();
+      await fetchBackupGallery();
     } catch (err: any) { 
       console.error("Error inserting record, starting deep backup writer:", err);
+      if (firestoreSuccess) {
+        setStatus({ type: 'success', msg: "Success! Image published to activity gallery (Cloud Sync complete)." });
+        setNewItem({ url: '', title: '', date: new Date().toISOString().split('T')[0], category: 'Activity' });
+        setFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        await fetchBackupGallery();
+        return;
+      }
+
       try {
         const localRes = await fetch('/api/public-gallery', {
           method: 'POST',
@@ -377,7 +426,7 @@ export default function GalleryAdmin() {
           if (fileInputRef.current) {
             fileInputRef.current.value = '';
           }
-          await fetchGallery();
+          await fetchBackupGallery();
           return;
         }
       } catch (fallbackErr: any) {
@@ -478,7 +527,7 @@ export default function GalleryAdmin() {
       }
       
       setStatus({ type: 'success', msg: "Activity gallery card removed safely." });
-      await fetchGallery();
+      await fetchBackupGallery();
     } catch (err: any) {
       console.error(err);
       alert("Failed to delete record: " + (err.message || "Database error"));
