@@ -171,11 +171,14 @@ export default function GalleryAdmin() {
     setLoading(true);
     // Subscribe to realtime gallery updates (Firestore onSnapshot) across all environments including GitHub Pages
     const galleryQuery = query(collection(db, 'gallery'), orderBy('created_at', 'desc'));
-    const unsubscribeGallery = onSnapshot(galleryQuery, (snapshot) => {
+    const unsubscribeGallery = onSnapshot(galleryQuery, async (snapshot) => {
       const liveList: GalleryItem[] = [];
+      const firestoreUrls = new Set<string>();
+      
       snapshot.forEach((docSnap) => {
         const item = docSnap.data();
         if (item.url) {
+          firestoreUrls.add(item.url.trim());
           liveList.push({
             id: docSnap.id,
             url: item.url,
@@ -186,12 +189,55 @@ export default function GalleryAdmin() {
         }
       });
       
-      if (liveList.length > 0) {
-        setItems(liveList);
-        setLoading(false);
-      } else {
-        fetchBackupGallery();
+      // Auto-synchronize missing/legacy items from Supabase or Local Server to Firestore
+      try {
+        const { data: supabaseData } = await supabase
+          .from('gallery')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        let rawItemsList: any[] = supabaseData || [];
+        if (!supabaseData || supabaseData.length === 0) {
+          const res = await fetch('/api/public-gallery').catch(() => null);
+          if (res && res.ok) {
+            const resData = await res.json().catch(() => null);
+            if (resData && resData.success && resData.list) {
+              rawItemsList = resData.list;
+            }
+          }
+        }
+
+        for (const rawItem of rawItemsList) {
+          const urlStr = (rawItem.url || '').trim();
+          if (urlStr && !firestoreUrls.has(urlStr)) {
+            console.log("Auto-migrating legacy item to Firestore:", urlStr);
+            try {
+              await addDoc(collection(db, 'gallery'), {
+                url: urlStr,
+                title: (rawItem.title || 'NSS Activity').trim(),
+                date: rawItem.date || 'Recent Activity',
+                category: rawItem.category || 'Activity',
+                created_at: rawItem.created_at || new Date().toISOString()
+              });
+              firestoreUrls.add(urlStr);
+              liveList.push({
+                id: urlStr,
+                url: urlStr,
+                title: rawItem.title || 'NSS Activity',
+                date: rawItem.date || 'Recent Activity',
+                category: rawItem.category || 'Activity'
+              });
+            } catch (pErr) {
+              console.warn("Failed to auto-migrate row to Firestore:", pErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Skipped automatic fallback migration check:", err);
       }
+      
+      setItems(liveList);
+      setLoading(false);
     }, (error) => {
       console.warn("Firestore gallery subscription failed: ", error);
       fetchBackupGallery();

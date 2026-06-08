@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -10,6 +10,11 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 // Inside a full-stack container environment, always specify firestoreDatabaseId
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// Always ensure an authenticated session for Firebase client operations (required for public Storage uploads/reads under rule bounds)
+signInAnonymously(auth).catch((err) => {
+  console.warn("Firebase Anonymous Sign-In bypassed:", err);
+});
 
 // Enable connectivity check on warm boot
 async function verifyFirebaseConnection() {
