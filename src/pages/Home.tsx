@@ -167,6 +167,67 @@ export default function Home() {
 
     fetchHomeData();
 
+    const fetchBackupGalleryHome = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('gallery')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.warn('Home Supabase gallery read failed, trying local endpoint:', error.message);
+          const res = await fetch('/api/public-gallery');
+          if (res.ok) {
+            const resData = await res.json();
+            if (resData.success && resData.list && resData.list.length > 0) {
+              setGalleryImages(resData.list.map((item: any) => ({
+                id: item.id || item.url,
+                src: item.url,
+                caption: item.title || 'NSS Activity',
+                date: item.date || 'Recent Activity',
+                location: item.category || 'Ottapalam Campus',
+                rawDate: item.created_at || ''
+              })).slice(0, 12));
+              return;
+            }
+          }
+          setGalleryImages(fallbackGallery);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          setGalleryImages(data.map((x: any) => ({ 
+            id: x.id, 
+            src: x.url, 
+            caption: x.title || 'NSS Activity', 
+            date: x.date || 'Recent Activity', 
+            location: x.category || 'Ottapalam Campus',
+            rawDate: x.created_at || ''
+          })).slice(0, 12));
+        } else {
+          const res = await fetch('/api/public-gallery').catch(() => null);
+          if (res && res.ok) {
+            const resData = await res.json().catch(() => null);
+            if (resData && resData.success && resData.list && resData.list.length > 0) {
+              setGalleryImages(resData.list.map((item: any) => ({
+                id: item.id || item.url,
+                src: item.url,
+                caption: item.title || 'NSS Activity',
+                date: item.date || 'Recent Activity',
+                location: item.category || 'Ottapalam Campus',
+                rawDate: item.created_at || ''
+              })).slice(0, 12));
+              return;
+            }
+          }
+          setGalleryImages(fallbackGallery);
+        }
+      } catch (err) {
+        console.error('Home backup gallery fetch failed:', err);
+        setGalleryImages(fallbackGallery);
+      }
+    };
+
     // Subscribe to realtime gallery updates (Firestore onSnapshot) across all environments including GitHub Pages
     const galleryQuery = query(collection(db, 'gallery'), orderBy('created_at', 'desc'));
     const unsubscribeGallery = onSnapshot(galleryQuery, (snapshot) => {
@@ -186,14 +247,14 @@ export default function Home() {
       });
 
       if (liveList.length === 0) {
-        setGalleryImages(fallbackGallery);
+        fetchBackupGalleryHome();
       } else {
         // Limit to 12 items for home feed performance page layout
         setGalleryImages(liveList.slice(0, 12));
       }
     }, (error) => {
-      console.warn("Firestore gallery subscription failed, using fallback:", error);
-      setGalleryImages(fallbackGallery);
+      console.warn("Firestore gallery subscription failed, using backup fetcher:", error);
+      fetchBackupGalleryHome();
     });
 
     // Subscribe to realtime updates
@@ -473,56 +534,146 @@ export default function Home() {
             className="lg:col-span-7 space-y-6 sm:space-y-8 text-center lg:text-left"
           >
             <div className="space-y-4 relative group/hero overflow-visible">
-              {/* STUNNING INDIAN FLAG FLYING BACKGROUND VECTOR WITH LOW TRANSPARENCY & WAVE DISTORTION */}
+              {/* STUNNING INDIAN FLAG FLYING BACKGROUND VECTOR WITH BEAUTIFUL VISIBILITY & WAVE DISTORTION */}
               <div 
-                className="absolute -left-1 sm:-left-3 top-[-30px] sm:top-[-45px] w-[300px] sm:w-[500px] h-[160px] sm:h-[280px] opacity-[0.06] pointer-events-none -z-10 select-none overflow-visible transition-opacity duration-500 group-hover/hero:opacity-[0.11]"
+                className="absolute -left-3 sm:-left-6 top-[-35px] sm:top-[-50px] w-[320px] sm:w-[560px] h-[170px] sm:h-[300px] opacity-[0.14] pointer-events-none -z-10 select-none overflow-visible transition-all duration-500 group-hover/hero:opacity-[0.22] group-hover/hero:scale-[1.02]"
                 style={{ filter: "url(#indian-flag-wave)" }}
               >
-                <svg viewBox="0 0 300 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                  <line x1="10" y1="5" x2="10" y2="195" stroke="#334155" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-                  <circle cx="10" cy="5" r="4.5" fill="#64748b" />
-                  
-                  <g transform="translate(10, 10)">
-                    <rect x="0" y="0" width="260" height="42" fill="#FF9933" />
-                    <rect x="0" y="42" width="260" height="42" fill="#FFFFFF" />
-                    <rect x="0" y="84" width="260" height="42" fill="#128807" />
+                <svg viewBox="0 0 320 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                  <defs>
+                    {/* Flagpole metallic gradients */}
+                    <linearGradient id="poleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#475569" />
+                      <stop offset="30%" stopColor="#94a3b8" />
+                      <stop offset="50%" stopColor="#f1f5f9" />
+                      <stop offset="70%" stopColor="#94a3b8" />
+                      <stop offset="100%" stopColor="#334155" />
+                    </linearGradient>
                     
-                    <g transform="translate(130, 63)">
-                      <circle cx="0" cy="0" r="16" fill="none" stroke="#000080" strokeWidth="1.8" />
-                      <circle cx="0" cy="0" r="3" fill="#000080" />
-                      {Array.from({ length: 24 }).map((_, spokeIdx) => {
-                        const angle = (spokeIdx * 360) / 24;
-                        return (
-                          <line 
-                            key={spokeIdx}
-                            x1="0" 
-                            y1="0" 
-                            x2={16 * Math.cos((angle * Math.PI) / 180)} 
-                            y2={16 * Math.sin((angle * Math.PI) / 180)} 
-                            stroke="#000080" 
-                            strokeWidth="0.8" 
-                          />
-                        );
-                      })}
-                      {Array.from({ length: 24 }).map((_, dotIdx) => {
-                        const angle = (dotIdx * 360) / 24 + 7.5;
-                        return (
-                          <circle 
-                            key={dotIdx}
-                            cx={14.5 * Math.cos((angle * Math.PI) / 180)}
-                            cy={14.5 * Math.sin((angle * Math.PI) / 180)}
-                            r="0.5"
-                            fill="#000080"
-                          />
-                        );
-                      })}
+                    <linearGradient id="goldFinial" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#fef08a" />
+                      <stop offset="40%" stopColor="#eab308" />
+                      <stop offset="80%" stopColor="#ca8a04" />
+                      <stop offset="100%" stopColor="#854d0e" />
+                    </linearGradient>
+
+                    {/* Saffron Gradient for realistic fabric sheen */}
+                    <linearGradient id="saffronGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FFAD5A" />
+                      <stop offset="50%" stopColor="#FF9933" />
+                      <stop offset="100%" stopColor="#D8740D" />
+                    </linearGradient>
+
+                    {/* White Gradient for realistic fabric sheen */}
+                    <linearGradient id="whiteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FFFFFF" />
+                      <stop offset="60%" stopColor="#F8FAFC" />
+                      <stop offset="100%" stopColor="#E2E8F0" />
+                    </linearGradient>
+
+                    {/* Green Gradient for realistic fabric sheen */}
+                    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#19A60B" />
+                      <stop offset="50%" stopColor="#128807" />
+                      <stop offset="100%" stopColor="#0B5D04" />
+                    </linearGradient>
+
+                    {/* Shading/Ripples Overlay to simulate 3D fabric folds */}
+                    <linearGradient id="fabricShading" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#000000" stopOpacity="0.15" />
+                      <stop offset="15%" stopColor="#ffffff" stopOpacity="0.1" />
+                      <stop offset="30%" stopColor="#000000" stopOpacity="0.25" />
+                      <stop offset="45%" stopColor="#ffffff" stopOpacity="0.15" />
+                      <stop offset="60%" stopColor="#000000" stopOpacity="0.2" />
+                      <stop offset="75%" stopColor="#ffffff" stopOpacity="0.1" />
+                      <stop offset="90%" stopColor="#000000" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="#ffffff" stopOpacity="0.05" />
+                    </linearGradient>
+
+                    {/* Real shadow filter */}
+                    <filter id="softShadow" x="-10%" y="-10%" width="130%" height="130%">
+                      <feDropShadow dx="3" dy="6" stdDeviation="5" floodColor="#0F172A" floodOpacity="0.22" />
+                    </filter>
+                  </defs>
+
+                  {/* Golden elegant rope loops on flagpole */}
+                  <path d="M 10 32 Q 5 60 10 90 Q 7 120 10 160" fill="none" stroke="#eab308" strokeWidth="1.2" opacity="0.6" strokeDasharray="3,1" />
+
+                  {/* Real flagpole with heavy silver gradients and shiny capital */}
+                  <line x1="12" y1="12" x2="12" y2="210" stroke="url(#poleGrad)" strokeWidth="6.5" strokeLinecap="round" />
+                  
+                  {/* Elegant base stand for pole */}
+                  <path d="M 4 206 L 20 206 L 16 212 L 8 212 Z" fill="url(#poleGrad)" opacity="0.9" />
+
+                  {/* Golden spherical finial */}
+                  <circle cx="12" cy="11" r="6" fill="url(#goldFinial)" />
+                  <circle cx="10" cy="9" r="2.5" fill="#ffffff" opacity="0.5" />
+
+                  {/* Flag group attached to pole */}
+                  <g transform="translate(15, 20)" filter="url(#softShadow)">
+                    <g>
+                      {/* Saffron stripe with custom border-radius & subtle texture */}
+                      <rect x="0" y="0" width="265" height="42" fill="url(#saffronGrad)" rx="1.5" />
+                      
+                      {/* White stripe */}
+                      <rect x="0" y="42" width="265" height="42" fill="url(#whiteGrad)" />
+                      
+                      {/* Green stripe with custom border-radius & subtle texture */}
+                      <rect x="0" y="84" width="265" height="42" fill="url(#greenGrad)" rx="1.5" />
+                      
+                      {/* 3D folds Shading Overlay */}
+                      <rect x="0" y="0" width="265" height="126" fill="url(#fabricShading)" style={{ mixBlendMode: 'multiply' }} rx="1.5" pointerEvents="none" />
+
+                      {/* Flag border / outline for realistic fabric edge thickness */}
+                      <rect x="0" y="0" width="265" height="126" fill="none" stroke="#1e293b" strokeWidth="0.5" opacity="0.1" rx="1.5" />
+
+                      {/* Highly elegant, fine Navy Ashoka Chakra */}
+                      <g transform="translate(132.5, 63)">
+                        <circle cx="0" cy="0" r="17" fill="none" stroke="#000080" strokeWidth="1.8" />
+                        <circle cx="0" cy="0" r="3" fill="#000080" />
+                        {/* Draw 24 Spokes */}
+                        {Array.from({ length: 24 }).map((_, spokeIdx) => {
+                          const angle = (spokeIdx * 360) / 24;
+                          return (
+                            <line 
+                              key={spokeIdx}
+                              x1="0" 
+                              y1="0" 
+                              x2={17 * Math.cos((angle * Math.PI) / 180)} 
+                              y2={17 * Math.sin((angle * Math.PI) / 180)} 
+                              stroke="#000080" 
+                              strokeWidth="0.8" 
+                            />
+                          );
+                        })}
+                        {/* Draw 24 tiny dots between outer edge of spokes */}
+                        {Array.from({ length: 24 }).map((_, dotIdx) => {
+                          const angle = (dotIdx * 360) / 24 + 7.5;
+                          return (
+                            <circle 
+                              key={dotIdx}
+                              cx={15.5 * Math.cos((angle * Math.PI) / 180)}
+                              cy={15.5 * Math.sin((angle * Math.PI) / 180)}
+                              r="0.6"
+                              fill="#000080"
+                            />
+                          );
+                        })}
+                      </g>
                     </g>
                   </g>
                 </svg>
               </div>
 
+              {/* CLEAN, ELEGANT HERO BADGE */}
+              <motion.div 
+                variants={textRevealVariants}
+                className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200/60 px-4 py-1.5 rounded-2xl select-none"
+              >
+                <Sparkles className="text-brand-650 w-3.5 h-3.5 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-700">Official NSS Digital Portal</span>
+              </motion.div>
 
-              
               <motion.h1 
                 variants={textRevealVariants}
                 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-950 leading-[0.95] uppercase relative z-10"

@@ -53,6 +53,65 @@ export default function Gallery() {
 
   useEffect(() => {
     setLoading(true);
+
+    const fetchBackupGalleryPage = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('gallery')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.warn('Gallery page Supabase read failed, trying local endpoint:', error.message);
+          const res = await fetch('/api/public-gallery');
+          if (res.ok) {
+            const resData = await res.json();
+            if (resData.success && resData.list && resData.list.length > 0) {
+              setImages(resData.list.map((item: any) => ({
+                src: item.url,
+                caption: item.title || 'NSS Activity',
+                date: item.date || 'Recent Activity',
+                location: item.category || 'Ottapalam Campus'
+              })));
+              return;
+            }
+          }
+          setImages(fallbackGallery);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          setImages(data.map((x: any) => ({ 
+            src: x.url, 
+            caption: x.title || 'NSS Activity', 
+            date: x.date || 'Recent Activity', 
+            location: x.category || 'Ottapalam Campus'
+          })));
+        } else {
+          const res = await fetch('/api/public-gallery').catch(() => null);
+          if (res && res.ok) {
+            const resData = await res.json().catch(() => null);
+            if (resData && resData.success && resData.list && resData.list.length > 0) {
+              setImages(resData.list.map((item: any) => ({
+                src: item.url,
+                caption: item.title || 'NSS Activity',
+                date: item.date || 'Recent Activity',
+                location: item.category || 'Ottapalam Campus'
+              })));
+              return;
+            }
+          }
+          setImages(fallbackGallery);
+        }
+      } catch (err) {
+        console.error('Gallery page backup fetch failed:', err);
+        setImages(fallbackGallery);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     // Subscribe to realtime gallery updates (Firestore onSnapshot) across all environments including GitHub Pages
     const galleryQuery = query(collection(db, 'gallery'), orderBy('created_at', 'desc'));
     const unsubscribeGallery = onSnapshot(galleryQuery, (snapshot) => {
@@ -70,15 +129,14 @@ export default function Gallery() {
       });
 
       if (liveList.length === 0) {
-        setImages(fallbackGallery);
+        fetchBackupGalleryPage();
       } else {
         setImages(liveList);
+        setLoading(false);
       }
-      setLoading(false);
     }, (error) => {
-      console.warn("Firestore gallery subscription failed: ", error);
-      setImages(fallbackGallery);
-      setLoading(false);
+      console.warn("Firestore gallery subscription failed, using backup fetcher: ", error);
+      fetchBackupGalleryPage();
     });
 
     return () => unsubscribeGallery();

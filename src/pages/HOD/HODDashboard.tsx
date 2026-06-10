@@ -94,9 +94,53 @@ export default function HODDashboard() {
     }
   };
 
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
   useEffect(() => {
+    async function verifyHODRole() {
+      try {
+        const localRole = localStorage.getItem('role');
+        const localUserId = localStorage.getItem('userId');
+        const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+        if (!loggedIn || localRole !== 'hod' || !localUserId) {
+          localStorage.clear();
+          navigate('/login');
+          return;
+        }
+
+        // Database verified authorization
+        const { data: profile, error } = await supabase
+          .from('hod_profiles')
+          .select('id')
+          .eq('id', localUserId)
+          .maybeSingle();
+
+        if (error || !profile) {
+          console.warn("Unauthorized HOD access attempt blocked.");
+          localStorage.clear();
+          navigate('/login');
+        } else {
+          setIsAuthorized(true);
+        }
+      } catch (err) {
+        localStorage.clear();
+        navigate('/login');
+      }
+    }
+
+    verifyHODRole();
     loadData();
-  }, [hodDepartment]);
+  }, [hodDepartment, navigate]);
+
+  if (isAuthorized === null) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <Loader2 className="animate-spin text-blue-600 w-10 h-10 mb-4" />
+        <p className="text-slate-500 font-extrabold uppercase tracking-widest text-xs animate-pulse">Establishing Secure Session...</p>
+      </div>
+    );
+  }
 
   const filteredStudents = students.filter(s => 
     s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 

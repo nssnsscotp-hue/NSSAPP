@@ -95,9 +95,53 @@ export default function AdminDashboard() {
     }
   };
 
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
   useEffect(() => {
+    async function verifyAdminRole() {
+      try {
+        const localRole = localStorage.getItem('role');
+        const localUserId = localStorage.getItem('userId');
+        const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+        if (!loggedIn || localRole !== 'admin' || !localUserId) {
+          localStorage.clear();
+          navigate('/login');
+          return;
+        }
+
+        // Database verified authorization
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', localUserId)
+          .maybeSingle();
+
+        if (error || !profile || profile.role !== 'admin') {
+          console.warn("Unauthorized administration access attempt blocked.");
+          localStorage.clear();
+          navigate('/login');
+        } else {
+          setIsAuthorized(true);
+        }
+      } catch (err) {
+        localStorage.clear();
+        navigate('/login');
+      }
+    }
+
+    verifyAdminRole();
     loadStorageMetrics();
-  }, []);
+  }, [navigate]);
+
+  if (isAuthorized === null) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <Loader2 className="animate-spin text-blue-600 w-10 h-10 mb-4" />
+        <p className="text-slate-500 font-extrabold uppercase tracking-widest text-xs animate-pulse">Establishing Secure Session...</p>
+      </div>
+    );
+  }
 
   const menuItems = [
     { id: 'overview', name: 'Overview', icon: BarChart3 },
