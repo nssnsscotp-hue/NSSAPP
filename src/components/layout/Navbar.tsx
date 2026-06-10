@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, LogOut, LogIn, Home, Bell, User, ShieldAlert, Heart, MessageSquare, Image, HelpCircle, Trophy, Contact, BarChart3, Library, GraduationCap, Calendar } from 'lucide-react';
+import { Menu, X, LogOut, LogIn, Home, Bell, User, ShieldAlert, Heart, MessageSquare, Image, HelpCircle, Trophy, Contact, BarChart3, Library, GraduationCap, Calendar, Info } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 
@@ -42,6 +42,7 @@ export default function Navbar() {
 
   const allNavItems = [
     { name: 'Home', href: '/', icon: Home },
+    { name: 'About NSS', href: '/about', icon: Info },
     { name: 'My Profile', href: '/profile', icon: User },
     { name: 'Metrics', href: '/performance', icon: BarChart3 },
     { name: 'Attendance', href: '/attendance', icon: Calendar },
@@ -61,6 +62,7 @@ export default function Navbar() {
 
   const publicNavItems = [
     { name: 'Home', href: '/', icon: Home },
+    { name: 'About NSS', href: '/about', icon: Info },
     { name: 'Announcements', href: '/announcements', icon: Bell },
     { name: 'User Guide', href: '/help', icon: HelpCircle },
     { name: 'Gallery', href: '/gallery', icon: Image },
@@ -72,6 +74,7 @@ export default function Navbar() {
     if (role === 'principal') {
       navItems = [
         { name: 'Home', href: '/', icon: Home },
+        { name: 'About NSS', href: '/about', icon: Info },
         { name: 'Principal Panel', href: '/principal', icon: GraduationCap },
         { name: 'Announcements', href: '/announcements', icon: Bell },
         { name: 'User Guide', href: '/help', icon: HelpCircle },
@@ -81,6 +84,7 @@ export default function Navbar() {
     } else if (role === 'hod') {
       navItems = [
         { name: 'Home', href: '/', icon: Home },
+        { name: 'About NSS', href: '/about', icon: Info },
         { name: 'HOD Panel', href: '/hod', icon: GraduationCap },
         { name: 'Announcements', href: '/announcements', icon: Bell },
         { name: 'User Guide', href: '/help', icon: HelpCircle },
@@ -89,6 +93,7 @@ export default function Navbar() {
     } else if (role === 'admin') {
       navItems = [
         { name: 'Home', href: '/', icon: Home },
+        { name: 'About NSS', href: '/about', icon: Info },
         { name: 'Admin Panel', href: '/admin', icon: User },
         { name: 'Announcements', href: '/announcements', icon: Bell },
         { name: 'User Guide', href: '/help', icon: HelpCircle },

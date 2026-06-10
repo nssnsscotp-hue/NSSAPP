@@ -13,6 +13,7 @@ import BloodBank from './pages/BloodBank';
 import Complaints from './pages/Complaints';
 import Gallery from './pages/Gallery';
 import Help from './pages/Help';
+import About from './pages/About';
 import AdminDashboard from './pages/Admin/Dashboard';
 import QuizSystem from './pages/Quiz';
 import Reports from './pages/Reports';
@@ -173,6 +174,7 @@ export default function App() {
           <Route path="/announcements" element={<Announcements />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/help" element={<Help />} />
+          <Route path="/about" element={<About />} />
           
           <Route element={<ProtectedRoute />}>
             {/* Protected Volunteer Routes */}
