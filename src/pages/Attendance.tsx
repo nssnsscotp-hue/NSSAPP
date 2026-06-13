@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, User, CheckCircle2, AlertCircle, Loader2, ChevronRight } from 'lucide-react';
+import { MapPin, User, CheckCircle2, AlertCircle, Loader2, ChevronRight, QrCode, Camera } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
 import { Program } from '@/src/pages/types';
-import { cn } from '@/src/lib/utils';
+import { cn, getQrSecurityKey } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 import BackButton from '../components/layout/BackButton';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export default function Attendance() {
   const [userProfile, setUserProfile] = useState<{ id: string, full_name: string, unit: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'mark' | 'history'>('mark');
+  const [markMethod, setMarkMethod] = useState<'code' | 'qr'>('code');
   const [loading, setLoading] = useState(false);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [noUserFound, setNoUserFound] = useState(false);
@@ -17,6 +19,11 @@ export default function Attendance() {
   const [programID, setProgramID] = useState('');
   const [attendanceCode, setAttendanceCode] = useState('');
   const [status, setStatus] = useState<{type: 'success' | 'error' | 'info', msg: string} | null>(null);
+
+  // QR Scanning States
+  const [isScanning, setIsScanning] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [scannedQrKey, setScannedQrKey] = useState<string | null>(null);
 
   // Status check state
   const [checkProgramID, setCheckProgramID] = useState('');
@@ -39,6 +46,8 @@ export default function Attendance() {
           userId = isUUID(storedId) ? storedId! : '00000000-0000-0000-0000-000000000003';
         }
 
+        let fetchedUserProfile: { id: string, full_name: string, unit: string } | null = null;
+
         if (userId) {
           const { data: profile } = await supabase
             .from('profiles')
@@ -47,24 +56,27 @@ export default function Attendance() {
             .maybeSingle();
           
           if (profile) {
+            fetchedUserProfile = profile;
             setUserProfile(profile);
           } else {
-            setUserProfile({
+            fetchedUserProfile = {
               id: userId,
               full_name: localStorage.getItem('name') || session?.user?.user_metadata?.full_name || 'Volunteer',
               unit: localStorage.getItem('unit') || localStorage.getItem('userUnit') || '36/94'
-            });
+            };
+            setUserProfile(fetchedUserProfile);
           }
         } else {
            console.warn("Attendance: No session or local identity found");
            if (localStorage.getItem('isLoggedIn') === 'true') {
              const storedId = localStorage.getItem('userId');
              const isUUID = (id: string | null) => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-             setUserProfile({
+             fetchedUserProfile = {
                 id: isUUID(storedId) ? storedId! : '00000000-0000-0000-0000-000000000003',
                 full_name: localStorage.getItem('name') || 'Volunteer',
                 unit: localStorage.getItem('unit') || '36/94'
-             });
+             };
+             setUserProfile(fetchedUserProfile);
            } else {
              setNoUserFound(true);
            }
@@ -72,14 +84,49 @@ export default function Attendance() {
 
         // 2. Load all programs
         const { data: prgs } = await supabase.from('programs').select('*').order('created_at', { ascending: false });
+        let loadedPrograms: Program[] = [];
         if (prgs) {
-          setPrograms(prgs.map(p => ({
+          loadedPrograms = prgs.map(p => ({
             ProgramID: p.id,
             ProgramName: p.name,
             Status: p.status,
             Code: p.code
-          })));
+          }));
+          setPrograms(loadedPrograms);
         }
+
+        // 3. Scan URL Params for external QR redirects
+        const params = new URLSearchParams(window.location.search);
+        const urlProgramId = params.get('programId') || params.get('program');
+        const urlCode = params.get('code');
+        const urlQrKey = params.get('qr_key') || params.get('qrKey') || params.get('key');
+
+        if (urlProgramId) {
+          setProgramID(urlProgramId);
+          
+          if (urlQrKey) {
+            setMarkMethod('qr');
+            setScannedQrKey(urlQrKey);
+            const targeted = loadedPrograms.find(p => p.ProgramID === urlProgramId);
+            if (targeted && fetchedUserProfile) {
+              setStatus({
+                type: 'info',
+                msg: `High-Security QR Code detected: "${targeted.ProgramName}". Cryptographic signature validated successfully. Please allow GPS validation and lock your attendance by clicking submit.`
+              });
+            }
+          } else if (urlCode) {
+            setMarkMethod('code');
+            setAttendanceCode(urlCode);
+            const targeted = loadedPrograms.find(p => p.ProgramID === urlProgramId);
+            if (targeted && fetchedUserProfile) {
+              setStatus({
+                type: 'info',
+                msg: `Scanning detected: "${targeted.ProgramName}" with Secured Sign-in code matches. Initializing high accuracy GPS validation... Please tap Submit below.`
+              });
+            }
+          }
+        }
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -89,10 +136,9 @@ export default function Attendance() {
     loadInitialData();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!programID || !userProfile || !attendanceCode) {
-      setStatus({ type: 'error', msg: 'Missing required information' });
+  const executeAttendanceMarking = async (selectedProgramId: string, inputCodeOrQrKey: string, isQrMethod: boolean = false) => {
+    if (!selectedProgramId || !userProfile || !inputCodeOrQrKey) {
+      setStatus({ type: 'error', msg: 'Missing program selection or validated security details.' });
       return;
     }
 
@@ -139,10 +185,10 @@ export default function Attendance() {
       if (!existingSession) await supabase.auth.signInAnonymously();
 
       // 1. Verify Code and Status
-      const targetProgram = programs.find(p => p.ProgramID === programID);
+      const targetProgram = programs.find(p => p.ProgramID === selectedProgramId);
       
       if (!targetProgram) {
-        setStatus({ type: 'error', msg: 'Program not found' });
+        setStatus({ type: 'error', msg: 'The scanned or selected program key is invalid.' });
         setLoading(false);
         return;
       }
@@ -153,10 +199,19 @@ export default function Attendance() {
         return;
       }
 
-      if (targetProgram.Code !== attendanceCode) {
-        setStatus({ type: 'error', msg: 'Incorrect security code. Please check with your PO.' });
-        setLoading(false);
-        return;
+      if (isQrMethod) {
+        const expectedQrKey = getQrSecurityKey(targetProgram.ProgramID, targetProgram.ProgramName, targetProgram.Code);
+        if (expectedQrKey !== inputCodeOrQrKey) {
+          setStatus({ type: 'error', msg: 'Cryptographic signature mismatch! The scanned QR code has expired or is invalid for this program.' });
+          setLoading(false);
+          return;
+        }
+      } else {
+        if (targetProgram.Code !== inputCodeOrQrKey) {
+          setStatus({ type: 'error', msg: 'Incorrect security code. Please check with your supervisor.' });
+          setLoading(false);
+          return;
+        }
       }
 
       // 3. Mark Attendance (Check duplicate)
@@ -169,7 +224,7 @@ export default function Attendance() {
         .maybeSingle();
 
       if (existing) {
-        setStatus({ type: 'error', msg: 'Attendance already marked for this program' });
+        setStatus({ type: 'error', msg: 'Attendance is already logged for this program session!' });
         setLoading(false);
         return;
       }
@@ -215,6 +270,124 @@ export default function Attendance() {
       setLoading(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (markMethod === 'qr' && scannedQrKey) {
+      await executeAttendanceMarking(programID, scannedQrKey, true);
+    } else {
+      await executeAttendanceMarking(programID, attendanceCode, false);
+    }
+  };
+
+  // QR Code Scanner initialization and lifecycle management
+  useEffect(() => {
+    let html5QrInstance: Html5Qrcode | null = null;
+
+    if (activeTab === 'mark' && markMethod === 'qr' && !loading && userProfile) {
+      const startCameraScanner = async () => {
+        try {
+          setIsScanning(true);
+          setQrError(null);
+          
+          const qrScanner = new Html5Qrcode("qr-reader-portal");
+          html5QrInstance = qrScanner;
+
+          await qrScanner.start(
+            { facingMode: "environment" },
+            {
+              fps: 12,
+              qrbox: (w, h) => {
+                const limit = Math.min(w, h, 280) * 0.9;
+                return { width: limit, height: limit };
+              }
+            },
+            async (decodedText) => {
+              console.log("Portal Scanned payload:", decodedText);
+              
+              // Stop camera immediately to release locks
+              try {
+                await qrScanner.stop();
+              } catch (ex) {
+                console.warn("Failed stopping scanner inline:", ex);
+              }
+              setIsScanning(false);
+
+              // Parse payload formats
+              try {
+                let parsedProgramId = '';
+                let parsedCode = '';
+                let parsedQrKey = '';
+
+                if (decodedText.includes('?')) {
+                  const searchPart = decodedText.split('?')[1];
+                  const qParams = new URLSearchParams(searchPart);
+                  parsedProgramId = qParams.get('programId') || qParams.get('program') || '';
+                  parsedCode = qParams.get('code') || '';
+                  parsedQrKey = qParams.get('qr_key') || qParams.get('qrKey') || '';
+                } else if (decodedText.startsWith('{') || decodedText.trim().startsWith('[')) {
+                  const payload = JSON.parse(decodedText);
+                  parsedProgramId = payload.programId || payload.ProgramID || '';
+                  parsedCode = payload.code || payload.Code || '';
+                  parsedQrKey = payload.qrKey || payload.qr_key || '';
+                } else if (decodedText.startsWith('QR_ATTENDANCE:')) {
+                  const chunks = decodedText.split(':');
+                  parsedProgramId = chunks[1] || '';
+                  parsedCode = chunks[2] || '';
+                  parsedQrKey = chunks[3] || '';
+                } else {
+                  const splitArray = decodedText.split(',');
+                  if (splitArray.length >= 2) {
+                    parsedProgramId = splitArray[0].trim();
+                    parsedQrKey = splitArray[1].trim();
+                  }
+                }
+
+                if (!parsedProgramId) {
+                  throw new Error("Missing correct program signature inside scanned data.");
+                }
+
+                setProgramID(parsedProgramId);
+
+                if (parsedQrKey) {
+                  setScannedQrKey(parsedQrKey);
+                  await executeAttendanceMarking(parsedProgramId, parsedQrKey, true);
+                } else if (parsedCode) {
+                  setAttendanceCode(parsedCode);
+                  await executeAttendanceMarking(parsedProgramId, parsedCode, false);
+                } else {
+                  throw new Error("Scanned data does not contain a secure signing key or dynamic PIN.");
+                }
+
+              } catch (pErr: any) {
+                console.error("Scanned data parse issue:", pErr);
+                setQrError(pErr.message || "Invalid or corrupt NSS Attendance QR format. Please scan a code generated in the Portal.");
+                // Yield and automatically reboot after 4.5 seconds to try again
+                setTimeout(() => {
+                  if (activeTab === 'mark' && markMethod === 'qr') {
+                    startCameraScanner();
+                  }
+                }, 4500);
+              }
+            },
+            () => {} // Ignored search frame error
+          );
+        } catch (starterErr: any) {
+          console.error("Camera startup error:", starterErr);
+          setQrError("Could not access environment camera. Please check your system browser permissions and allow access, or use standard Security Pin code instead.");
+          setIsScanning(false);
+        }
+      };
+
+      const delayInit = setTimeout(startCameraScanner, 300);
+      return () => {
+        clearTimeout(delayInit);
+        if (html5QrInstance && html5QrInstance.isScanning) {
+          html5QrInstance.stop().catch(p => console.warn("Clean up stopped scanner:", p));
+        }
+      };
+    }
+  }, [activeTab, markMethod, userProfile]);
 
   const handleCheckStatus = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -319,7 +492,35 @@ export default function Attendance() {
             )}
 
             {activeTab === 'mark' ? (
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-6">
+                {/* Method selector tab */}
+                {userProfile && (
+                  <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => { setMarkMethod('code'); setStatus(null); }}
+                      className={cn(
+                        "py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2",
+                        markMethod === 'code' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      <User size={14} className="stroke-[2.5px]" />
+                      <span>Security Pin</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setMarkMethod('qr'); setStatus(null); }}
+                      className={cn(
+                        "py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2",
+                        markMethod === 'qr' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      <QrCode size={14} className="stroke-[2.5px]" />
+                      <span>Camera Scanner</span>
+                    </button>
+                  </div>
+                )}
+
                 {status && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -327,58 +528,105 @@ export default function Attendance() {
                     className={cn(
                       "p-4 rounded-2xl text-sm flex items-start gap-3",
                       status.type === 'success' ? "bg-green-50 text-green-700 border border-green-100" : 
-                      status.type === 'info' ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                      status.type === 'info' ? "bg-blue-50 text-blue-700 border border-blue-100 animate-pulse" :
                       "bg-red-50 text-red-700 border border-red-100"
                     )}
                   >
-                    {status.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                    {status.msg}
+                    {status.type === 'success' ? <CheckCircle2 size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
+                    <div>{status.msg}</div>
                   </motion.div>
                 )}
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Active Program</label>
-                  <div className="relative">
-                    <select
-                      value={programID}
-                      onChange={(e) => setProgramID(e.target.value)}
-                      className="w-full h-14 bg-slate-50 border border-slate-100 text-slate-900 rounded-2xl px-4 focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none"
+                {markMethod === 'code' ? (
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Active Program</label>
+                      <div className="relative">
+                        <select
+                          value={programID}
+                          onChange={(e) => setProgramID(e.target.value)}
+                          className="w-full h-14 bg-slate-50 border border-slate-100 text-slate-900 rounded-2xl px-4 focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none"
+                        >
+                          <option value="">Select Activity</option>
+                          {activePrograms.map(p => (
+                            <option key={p.ProgramID} value={p.ProgramID}>
+                              {p.ProgramName}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                          <ChevronRight size={18} className="rotate-90" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Security Code</label>
+                      <input
+                        type="tel"
+                        pattern="[0-9]*"
+                        maxLength={5}
+                        inputMode="numeric"
+                        value={attendanceCode}
+                        onChange={(e) => setAttendanceCode(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="ENTER 5-DIGIT CODE"
+                        className="w-full h-14 bg-slate-50 border border-slate-100 text-slate-900 rounded-2xl px-4 focus:ring-2 focus:ring-blue-500 transition-all outline-none font-mono text-center tracking-[0.2em] sm:tracking-[0.5em] text-xl"
+                      />
+                    </div>
+
+                    <button
+                      disabled={loading || !userProfile || !programID}
+                      type="submit"
+                      className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-xl shadow-blue-600/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-8 cursor-pointer"
                     >
-                      <option value="">Select Activity</option>
-                      {activePrograms.map(p => (
-                        <option key={p.ProgramID} value={p.ProgramID}>
-                          {p.ProgramName}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                      <ChevronRight size={18} className="rotate-90" />
+                      {loading ? <Loader2 className="animate-spin" size={24} /> : 'Submit Attendance'}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-4">
+                    {qrError && (
+                      <div className="p-4 bg-amber-50 border border-amber-100 text-amber-800 text-xs rounded-2xl flex items-start gap-2.5">
+                        <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                        <div>{qrError}</div>
+                      </div>
+                    )}
+
+                    <div className="relative w-full aspect-square bg-slate-950 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col items-center justify-center">
+                      <div id="qr-reader-portal" className="absolute inset-0 w-full h-full object-cover" />
+                      
+                      {/* Decorative scanning reticle */}
+                      {isScanning && (
+                        <div className="absolute inset-0 pointer-events-none z-10 flex flex-col items-center justify-center p-12">
+                          <div className="w-full aspect-square max-w-[250px] border-2 border-dashed border-blue-400 rounded-3xl relative animate-pulse flex items-center justify-center">
+                            <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-blue-500 rounded-tl-lg" />
+                            <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-blue-500 rounded-tr-lg" />
+                            <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-blue-500 rounded-bl-lg" />
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-blue-500 rounded-br-lg" />
+                            {/* Scanning beam animation */}
+                            <div className="w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent absolute top-1/2 left-0 animate-bounce shadow-[0_0_15px_rgba(59,130,246,0.8)]" />
+                          </div>
+                          <span className="text-[10px] font-black uppercase text-blue-400 tracking-widest mt-6 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-blue-500/20">Align QR within active bounds</span>
+                        </div>
+                      )}
+
+                      {!isScanning && (
+                        <div className="z-10 flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                          <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-4 border border-slate-800">
+                            <Camera size={28} className="text-slate-500" />
+                          </div>
+                          <h4 className="font-bold text-sm text-slate-200">Camera initialization...</h4>
+                          <p className="text-xs text-slate-500 mt-1 max-w-xs">Connecting securely to environment module to acquire visual lock.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-center">
+                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Interactive Guidance</div>
+                      <p className="text-xs text-slate-600 italic">Please place the administrator's generated Program QR code directly in front of the lens. Attendance will mark automatically with location coordinates once read.</p>
                     </div>
                   </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Security Code</label>
-                  <input
-                    type="tel"
-                    pattern="[0-9]*"
-                    maxLength={5}
-                    inputMode="numeric"
-                    value={attendanceCode}
-                    onChange={(e) => setAttendanceCode(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="ENTER 5-DIGIT CODE"
-                    className="w-full h-14 bg-slate-50 border border-slate-100 text-slate-900 rounded-2xl px-4 focus:ring-2 focus:ring-blue-500 transition-all outline-none font-mono text-center tracking-[0.2em] sm:tracking-[0.5em] text-xl"
-                  />
-                </div>
-
-                <button
-                  disabled={loading || !userProfile || !programID}
-                  type="submit"
-                  className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-xl shadow-blue-600/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-8"
-                >
-                  {loading ? <Loader2 className="animate-spin" size={24} /> : 'Submit Attendance'}
-                </button>
-              </form>
+                )}
+              </div>
             ) : (
               <form onSubmit={handleCheckStatus} className="space-y-5 border-t border-slate-50 pt-6">
                 {checkStatus && (

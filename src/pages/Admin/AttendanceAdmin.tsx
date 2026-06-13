@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Loader2, Download, CheckCircle, Clock, Search, ArrowUpDown, Filter, User, ShieldAlert, ArrowLeft, ChevronRight, MapPin } from 'lucide-react';
+import { Calendar, Plus, Loader2, Download, CheckCircle, Clock, Search, ArrowUpDown, Filter, User, ShieldAlert, ArrowLeft, ChevronRight, MapPin, QrCode, Printer } from 'lucide-react';
 import { Program } from '@/src/pages/types';
 import { supabase } from '@/src/lib/supabase';
-import { cn } from '@/src/lib/utils';
+import { cn, getQrSecurityKey } from '@/src/lib/utils';
 
 interface AttendanceRecord {
   id?: string;
@@ -34,6 +34,155 @@ export default function AttendanceAdmin() {
   });
 
   const [status, setStatus] = useState<{type: 'success' | 'error', msg: string} | null>(null);
+
+  // QR Code generator states
+  const [qrType, setQrType] = useState<'existing' | 'custom'>('existing');
+  const [qrSelectedProgramId, setQrSelectedProgramId] = useState<string>('');
+  const [qrCustomName, setQrCustomName] = useState<string>('');
+  const [qrCustomCode, setQrCustomCode] = useState<string>('');
+  const [qrCustomId, setQrCustomId] = useState<string>('');
+
+  useEffect(() => {
+    if (programs.length > 0 && !qrSelectedProgramId) {
+      const activeOne = programs.find(p => p.Status === 'Active') || programs[0];
+      setQrSelectedProgramId(activeOne.ProgramID);
+    }
+  }, [programs]);
+
+  let selectedProgramNameForQR = '';
+  let selectedProgramIdForQR = '';
+  let selectedProgramCodeForQR = '';
+
+  if (qrType === 'existing') {
+    const matched = programs.find(p => p.ProgramID === qrSelectedProgramId);
+    if (matched) {
+      selectedProgramNameForQR = matched.ProgramName;
+      selectedProgramIdForQR = matched.ProgramID;
+      selectedProgramCodeForQR = matched.Code;
+    }
+  } else {
+    selectedProgramNameForQR = qrCustomName || 'Dynamic Activity';
+    selectedProgramIdForQR = qrCustomId || 'VOLUNTEER';
+    selectedProgramCodeForQR = qrCustomCode || '12345';
+  }
+
+  const secureQrKey = getQrSecurityKey(selectedProgramIdForQR, selectedProgramNameForQR, selectedProgramCodeForQR);
+
+  const qrUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/attendance?programId=${encodeURIComponent(selectedProgramIdForQR)}&qr_key=${encodeURIComponent(secureQrKey)}`
+    : '';
+
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&color=0f171c&data=${encodeURIComponent(qrUrl)}`;
+
+  const handlePrintQR = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print NSS Attendance QR</title>
+            <style>
+              body {
+                font-family: system-ui, -apple-system, sans-serif;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                background-color: white;
+                color: #0f172a;
+                text-align: center;
+              }
+              .card {
+                border: 4px solid #1e40af;
+                border-radius: 32px;
+                padding: 45px;
+                max-width: 440px;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+                background: white;
+              }
+              .header {
+                font-size: 26px;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                margin-bottom: 5px;
+                color: #1e40af;
+              }
+              .sub {
+                font-size: 13px;
+                color: #64748b;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                margin-bottom: 35px;
+              }
+              img {
+                width: 260px;
+                height: 260px;
+                border: 2px solid #e2e8f0;
+                padding: 12px;
+                border-radius: 16px;
+                background: white;
+              }
+              .program-name {
+                font-size: 21px;
+                font-weight: 900;
+                margin-top: 25px;
+                text-transform: uppercase;
+                color: #0f172a;
+              }
+              .details {
+                font-family: monospace;
+                margin-top: 12px;
+                font-size: 15px;
+                background: #f1f5f9;
+                padding: 8px 18px;
+                border-radius: 10px;
+                font-weight: bold;
+                display: inline-block;
+                color: #1e293b;
+                letter-spacing: 0.05em;
+              }
+              .footer {
+                margin-top: 35px;
+                font-size: 11px;
+                color: #475569;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+              }
+              @media print {
+                body { height: auto; }
+                .card { border: none; box-shadow: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="header">NSS ATTENDANCE</div>
+              <div class="sub">UNITS 36 & 94 • SECURED GPS PORTAL</div>
+              <img src="${qrImageUrl}" alt="Attendance QR Code" />
+              <div class="program-name">${selectedProgramNameForQR}</div>
+              <div class="details">ID: ${selectedProgramIdForQR}</div>
+              <div class="details" style="display: block; margin: 12px auto 0; font-size: 10px; word-break: break-all; max-width: 320px; color: #475569; border: 1px dashed #94a3b8; background: #f8fafc; text-transform: none; letter-spacing: 0.02em;">SECURE SIGN-IN FLIGHT-KEY:<br><span style="font-weight: 900; font-family: monospace; font-size: 11px; color: #0f172a;">${secureQrKey}</span></div>
+              <div class="footer">Scan to automatically mark daily attendance</div>
+            </div>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                  window.close();
+                }, 500);
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -263,6 +412,198 @@ export default function AttendanceAdmin() {
                   {submitting ? <Loader2 className="animate-spin" /> : "Save Program"}
                 </button>
               </form>
+            </div>
+
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 mt-6 space-y-5">
+              <div className="flex items-center gap-2">
+                <QrCode size={18} className="text-blue-600" />
+                <h3 className="font-bold text-slate-900 uppercase tracking-widest text-[10px]">QR Code Generator</h3>
+              </div>
+              <p className="text-xs text-slate-500">Generate high-resolution scanning posters for programs automatically.</p>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setQrType('existing')}
+                    className={cn(
+                      "py-2 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer",
+                      qrType === 'existing' ? "bg-white text-slate-900 shadow-sm animate-fade-in" : "text-slate-400"
+                    )}
+                  >
+                    Active Program
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrType('custom')}
+                    className={cn(
+                      "py-2 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer",
+                      qrType === 'custom' ? "bg-white text-slate-900 shadow-sm animate-fade-in" : "text-slate-400"
+                    )}
+                  >
+                    Type Custom
+                  </button>
+                </div>
+
+                {qrType === 'existing' ? (
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Select Program</label>
+                    <select
+                      value={qrSelectedProgramId}
+                      onChange={e => setQrSelectedProgramId(e.target.value)}
+                      className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-3 text-xs outline-none focus:ring-1 focus:ring-blue-600 font-bold"
+                    >
+                      {programs.length === 0 ? (
+                        <option value="">No Programs Created Yet</option>
+                      ) : (
+                        programs.map(p => (
+                          <option key={p.ProgramID} value={p.ProgramID}>
+                            [{p.Code}] {p.ProgramName}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Program Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Camp Daily Rally"
+                        value={qrCustomName}
+                        onChange={e => setQrCustomName(e.target.value)}
+                        className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-3 text-xs outline-none focus:ring-1 focus:ring-blue-600 font-medium"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Program ID</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. CAMP02"
+                          value={qrCustomId}
+                          onChange={e => setQrCustomId(e.target.value)}
+                          className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-3 text-xs outline-none focus:ring-1 focus:ring-blue-600 font-medium"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">5-Digit Code</label>
+                        <input
+                          type="text"
+                          maxLength={5}
+                          placeholder="e.g. 52314"
+                          value={qrCustomCode}
+                          onChange={e => setQrCustomCode(e.target.value.replace(/[^0-9]/g, ''))}
+                          className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-3 text-xs outline-none focus:ring-1 focus:ring-blue-600 font-bold tracking-widest text-center"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {qrType === 'custom' && (
+                  <div className="p-3 bg-amber-50 border border-amber-100 text-amber-800 rounded-xl text-[10px] leading-relaxed">
+                    💡 <strong>Database Activation Required:</strong> To let volunteers scan and mark attendance, you must click activate below. This saves the custom program into the database as <strong>Active</strong>. You can close it anytime from the <strong>Active Systems</strong> board on the right.
+                  </div>
+                )}
+              </div>
+
+              {/* QR Preview Zone */}
+              <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col items-center justify-center text-center space-y-4">
+                <div className="relative p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                  <img
+                    referrerPolicy="no-referrer"
+                    src={qrImageUrl}
+                    alt="SECURED PORTAL QR"
+                    className="w-40 h-40 object-contain rounded"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=error';
+                    }}
+                  />
+                  <div className="absolute inset-0 border border-blue-500/10 pointer-events-none rounded-xl" />
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-xs text-slate-900 uppercase tracking-tight line-clamp-1">{selectedProgramNameForQR}</h4>
+                  <div className="text-[10px] text-slate-500 font-mono mt-1.5 flex flex-col items-center gap-1">
+                    <div>ID: {selectedProgramIdForQR}</div>
+                    <div className="text-[8px] uppercase tracking-wider font-extrabold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded leading-none">
+                      🔐 secure cryptographic signature
+                    </div>
+                    <div className="text-[8px] text-slate-700 bg-slate-100/80 px-1 py-0.5 rounded font-bold font-mono">
+                      {secureQrKey}
+                    </div>
+                  </div>
+                </div>
+
+                {qrType === 'custom' ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!qrCustomId.trim() || !qrCustomName.trim() || !qrCustomCode.trim()) {
+                        setStatus({ type: 'error', msg: "Please fill in all custom activity fields (ID, Name, and Code)." });
+                        return;
+                      }
+                      setSubmitting(true);
+                      setStatus(null);
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session) await supabase.auth.signInAnonymously();
+
+                        const { error } = await supabase
+                          .from('programs')
+                          .insert([{
+                            id: qrCustomId.trim(),
+                            name: qrCustomName.trim(),
+                            code: qrCustomCode.trim(),
+                            status: 'Active'
+                          }]);
+
+                        if (error) {
+                          if (error.code === '23505') {
+                            throw new Error("A system with this ID already exists! Please use a unique ID, or select it from 'Active Program' tab.");
+                          }
+                          throw error;
+                        }
+
+                        // Update list & select it
+                        await fetchData();
+                        setQrSelectedProgramId(qrCustomId.trim());
+                        setQrType('existing');
+                        
+                        setStatus({ type: 'success', msg: `Initialized & Activated custom program "${qrCustomName}" successfully!` });
+
+                        // Printing
+                        setTimeout(() => {
+                          handlePrintQR();
+                        }, 300);
+
+                      } catch (err: any) {
+                        console.error(err);
+                        setStatus({ type: 'error', msg: err.message || "Failed to activate custom program." });
+                      } finally {
+                        setSubmitting(false);
+                      }
+                    }}
+                    disabled={submitting || !qrCustomId.trim() || !qrCustomName.trim() || !qrCustomCode.trim()}
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow cursor-pointer shadow-blue-600/15 disabled:opacity-50"
+                  >
+                    {submitting ? <Loader2 className="animate-spin" size={12} /> : <Printer size={12} />}
+                    <span>Activate & Print Attendance QR Poster</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handlePrintQR}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow cursor-pointer shadow-slate-900/15"
+                  >
+                    <Printer size={12} />
+                    <span>Print Attendance QR Poster</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
