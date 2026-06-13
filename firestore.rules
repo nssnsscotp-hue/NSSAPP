@@ -27,6 +27,32 @@ service cloud.firestore {
       allow delete: if true;
     }
 
+    // 4. Website layout/leadership customization settings rules
+    match /website_config/{configId} {
+      // Allow public reads for display, and updates for administrative setups
+      allow read, write: if true;
+    }
+
+    // 4.5 Quizzes and Quiz Attempts
+    match /quizzes/{quizId} {
+      allow read, write: if true;
+    }
+
+    match /quiz_attempts/{attemptId} {
+      allow read, write: if true;
+    }
+
+    // 4.6 Drug reports matching anonymous submissions
+    match /drug_reports/{reportId} {
+      allow create: if isValidDrugReport(request.resource.data) && reportId == request.resource.data.id;
+      allow read, update, delete: if true;
+    }
+
+    // 5. Connectivity verification check rules
+    match /test_connectivity_check/{docId} {
+      allow read, write: if true;
+    }
+
     // Reuseable, hardened helper functions
     function isSignedIn() {
       return request.auth != null;
@@ -64,6 +90,16 @@ service cloud.firestore {
         && data.category.size() <= 100
         && data.created_at is string 
         && data.created_at.size() <= 100;
+    }
+
+    function isValidDrugReport(data) {
+      return data.id is string
+        && data.id.size() >= 1
+        && data.id.size() <= 100
+        && data.type is string
+        && data.location is string
+        && data.details is string
+        && data.timeline is string;
     }
   }
 }

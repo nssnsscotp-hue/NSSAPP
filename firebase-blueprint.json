@@ -48,6 +48,83 @@
         }
       },
       "required": ["url", "title", "date", "category", "created_at"]
+    },
+    "WebsiteSettings": {
+      "title": "Website Settings",
+      "description": "Customizable content parts and leadership team details of the website",
+      "type": "object",
+      "properties": {
+        "principal": {
+          "type": "object",
+          "description": "Principal details"
+        },
+        "po36": {
+          "type": "object",
+          "description": "Unit 36 program officer details"
+        },
+        "po94": {
+          "type": "object",
+          "description": "Unit 94 program officer details"
+        },
+        "heroTitle": { "type": "string" },
+        "heroSubText": { "type": "string" },
+        "heroDesc": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "tickerText": { "type": "string" },
+        "collegeName": { "type": "string" },
+        "unitsText": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["updatedAt"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Dynamic customizable quizzes designed by Program Officers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "duration": { "type": "number" },
+        "certificateStyle": { "type": "object" },
+        "questions": { "type": "array" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "title", "duration", "questions"]
+    },
+    "QuizAttempt": {
+      "title": "Quiz Attempt",
+      "description": "User scores and finished certificates data mapping",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "quiz_id": { "type": "string" },
+        "quiz_title": { "type": "string" },
+        "score": { "type": "number" },
+        "total_questions": { "type": "number" },
+        "completed_at": { "type": "string" }
+      },
+      "required": ["id", "username", "quiz_id", "score", "total_questions"]
+    },
+    "DrugReport": {
+      "title": "Drug / Abuse Report",
+      "description": "Anonymous reports of drug use or abuse cases in college or other areas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "location": { "type": "string" },
+        "specificLocation": { "type": "string" },
+        "details": { "type": "string" },
+        "timeline": { "type": "string" },
+        "evidenceUrl": { "type": "string" },
+        "evidenceType": { "type": "string" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string" },
+        "adminComment": { "type": "string" }
+      },
+      "required": ["id", "type", "location", "details", "timeline", "created_at"]
     }
   },
   "firestore": {
@@ -58,6 +135,22 @@
     "gallery": {
       "schema": "GalleryItem",
       "description": "Public activity gallery posts allowing real-time sync"
+    },
+    "website_config": {
+      "schema": "WebsiteSettings",
+      "description": "Dynamic website layout controls and leadership profiles sync"
+    },
+    "quizzes": {
+      "schema": "Quiz",
+      "description": "Admins built quizzes registry"
+    },
+    "quiz_attempts": {
+      "schema": "QuizAttempt",
+      "description": "Logs of user completions and scores"
+    },
+    "drug_reports": {
+      "schema": "DrugReport",
+      "description": "Secure, anonymous submissions of substance or abuse cases"
     }
   }
 }

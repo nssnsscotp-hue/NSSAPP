@@ -13,7 +13,8 @@ import {
 } from 'recharts';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
-import { getProfilePhoto, saveProfilePhoto } from '@/src/lib/firebaseClient';
+import { getProfilePhoto, saveProfilePhoto, db } from '@/src/lib/firebaseClient';
+import { doc, getDoc } from 'firebase/firestore';
 import BackButton from '../components/layout/BackButton';
 import ImageCropModal from '../components/profile/ImageCropModal';
 
@@ -91,6 +92,8 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<VolunteerProfile | null>(null);
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
+  const [sealedCert, setSealedCert] = useState<any>(null);
+  const [clearanceLog, setClearanceLog] = useState<any>(null);
   const [stats, setStats] = useState({
     totalQuizzes: 0,
     averageScorePct: 0,
@@ -102,6 +105,7 @@ export default function Profile() {
 
   const [selectedAttempt, setSelectedAttempt] = useState<QuizAttempt | null>(null);
   const [showCertModal, setShowCertModal] = useState(false);
+  const [showSealedCertModal, setShowSealedCertModal] = useState(false);
   const [copiedQuery, setCopiedQuery] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'certificates'>('overview');
   const certPrintRef = useRef<HTMLDivElement>(null);
@@ -273,6 +277,25 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
         }
       }
       setProfile(activeProfile);
+
+      // 1.5 Fetch Clearance and Sealed Certificate status dynamically
+      if (activeProfile.id) {
+        try {
+          const sealRef = doc(db, 'nss_sealed_certificates', activeProfile.id);
+          const sealSnap = await getDoc(sealRef);
+          if (sealSnap.exists()) {
+            setSealedCert(sealSnap.data());
+          }
+
+          const clearRef = doc(db, 'nss_service_clearances', activeProfile.id);
+          const clearSnap = await getDoc(clearRef);
+          if (clearSnap.exists()) {
+            setClearanceLog(clearSnap.data());
+          }
+        } catch (dbErr) {
+          console.warn("Could not load Firestore certificate values:", dbErr);
+        }
+      }
 
       // 2. Fetch Attendance Counter
       let tempAttendance = 0;
@@ -449,6 +472,10 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
   };
 
   const handlePrintCertificate = () => {
+    window.print();
+  };
+
+  const handlePrintSealedCertificate = () => {
     window.print();
   };
 
@@ -1061,11 +1088,80 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
         )}
 
         {activeTab === 'certificates' && (
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
-            <div>
-              <h3 className="text-lg font-black uppercase tracking-widest text-slate-800">My Quiz Certifications</h3>
-              <p className="text-slate-500 text-xs">Verify your marks and request printable high-definition Certificates of Excellence.</p>
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* NSS Service Merit Certificate Clearance Tracking Board */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+              <div>
+                <span className="bg-amber-500 text-[9px] font-black uppercase tracking-widest text-slate-950 px-3 py-1 rounded-full border border-amber-400">
+                  ★ UNIVERSITY OF CALICUT REGISTRY ★
+                </span>
+                <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 mt-3">NSS Merit Clearance Status</h3>
+                <p className="text-slate-500 text-xs">Accumulate 120+ active service hours and complete a 7-day Special Camp to claim your official University Merit Service Certificate.</p>
+              </div>
+
+              {/* Clearance checklist tracker stepper */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-6 border-y border-slate-100 py-6">
+                {[
+                  { label: "1. 120h Points", desc: `Earned ${profile?.points || 0}h`, ok: (profile?.points || 0) >= 120 },
+                  { label: "2. 7-Day Camp", desc: "Special Camp Attendance", ok: !!clearanceLog?.campCompleted },
+                  { label: "3. Hour Audit", desc: "PO Ledger Verification", ok: !!clearanceLog?.hoursVerified },
+                  { label: "4. Recommended", desc: "Seal Room Despatch", ok: !!clearanceLog?.recommendedToPrincipal },
+                  { label: "5. Principal Seal", desc: "Digitally Signed", ok: !!sealedCert?.sealApproved }
+                ].map((step, i) => (
+                  <div key={i} className="flex flex-col items-center text-center space-y-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-100 relative group">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${
+                      step.ok 
+                        ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-400' 
+                        : 'bg-slate-200 text-slate-400 border border-slate-300'
+                    }`}>
+                      {step.ok ? <Check size={14} className="stroke-[3]" /> : i + 1}
+                    </div>
+                    <div>
+                      <h4 className={`text-[11px] font-black uppercase tracking-wider ${step.ok ? 'text-slate-900' : 'text-slate-400'}`}>
+                        {step.label}
+                      </h4>
+                      <p className="text-[9px] font-semibold text-slate-400 mt-0.5 leading-none px-1">
+                        {step.desc}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Status prompt based on sealApproved */}
+              {sealedCert?.sealApproved ? (
+                <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-3xl p-6 text-slate-950 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-2xl rounded-full" />
+                  <div className="space-y-1 relative z-10">
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-100">✨ CERTIFICATE CLEARANCE LOGGED ✨</p>
+                    <h4 className="text-lg font-black uppercase tracking-tight">Your NSS Merit Certificate is ready!</h4>
+                    <p className="text-xs font-semibold text-amber-950 max-w-xl">
+                      Dr. Rajesh R (Principal) and your Program Officer have digitally sealed your Merit Certificate under verification ID: <span className="font-mono bg-slate-950 text-amber-400 px-1.5 py-0.5 rounded text-[10px]">{sealedCert.certificateId}</span>.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowSealedCertModal(true)}
+                    className="h-12 px-6 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-amber-400 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer relative z-10"
+                  >
+                    <Award size={15} />
+                    <span>View &amp; Print NSS Certificate</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 flex items-center gap-3.5 text-slate-500">
+                  <AlertCircle size={18} className="text-slate-400 shrink-0" />
+                  <p className="text-xs font-semibold">
+                    Once you complete the 5 verification benchmarks above, your official merit certificate will unlock here for dynamic printing or direct Calicut University credit submissions.
+                  </p>
+                </div>
+              )}
             </div>
+
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm space-y-6">
+              <div>
+                <h3 className="text-lg font-black uppercase tracking-widest text-slate-800">My Quiz Certifications</h3>
+                <p className="text-slate-500 text-xs">Verify your marks and request printable high-definition Certificates of Excellence.</p>
+              </div>
 
             {attempts.length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
@@ -1107,7 +1203,8 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
 
       </div>
 
@@ -1250,6 +1347,156 @@ CREATE POLICY "Allow public insert attempts" ON public.quiz_attempts FOR INSERT 
                   className="px-6 h-14 border-2 border-slate-200 hover:bg-slate-50 text-slate-600 font-extrabold text-sm uppercase rounded-2xl transition-all"
                 >
                   Done
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Dynamic Sealed National Merit Service Certificate Modal */}
+      <AnimatePresence>
+        {showSealedCertModal && sealedCert && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/80 p-4 overflow-y-auto backdrop-blur-sm animate-in fade-in duration-250">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-4xl p-6 md:p-8 relative shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
+            >
+              <button 
+                onClick={() => {
+                  setShowSealedCertModal(false);
+                }}
+                className="absolute top-6 right-6 w-12 h-12 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors bg-white shadow-sm z-30"
+                id="close-seal-modal-btn"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="pb-4 border-b border-slate-100">
+                <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Printable National NSS Merit Certificate</h3>
+                <p className="text-slate-500 text-xs mt-1">Official University of Calicut aligned service citation issued by the Office of the Principal.</p>
+              </div>
+
+              {/* The Certificate Stage */}
+              <div className="overflow-x-auto p-4 bg-slate-100 rounded-3xl" id="sealed-print-stage">
+                <div 
+                  id="print-sealed-container"
+                  className="bg-white border-[14px] border-double border-amber-600 p-8 md:p-14 text-center rounded-2xl relative select-none shadow-lg max-w-3xl mx-auto"
+                  style={{ minWidth: '650px', minHeight: '480px' }}
+                >
+                  
+                  {/* Decorative corner patterns */}
+                  <div className="absolute top-4 left-4 w-12 h-12 border-t-4 border-l-4 border-amber-600 rounded-tl-lg" />
+                  <div className="absolute top-4 right-4 w-12 h-12 border-t-4 border-r-4 border-amber-600 rounded-tr-lg" />
+                  <div className="absolute bottom-4 left-4 w-12 h-12 border-b-4 border-l-4 border-amber-600 rounded-bl-lg" />
+                  <div className="absolute bottom-4 right-4 w-12 h-12 border-b-4 border-r-4 border-amber-600 rounded-br-lg" />
+
+                  {/* Centered Crest watermark back ornament */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none text-9xl text-amber-500">
+                    ❂
+                  </div>
+
+                  {/* NSS / College Emblems Header */}
+                  <div className="flex justify-between items-center px-4 mb-4">
+                    <img 
+                      src="https://img.logoipsum.com/262.svg" 
+                      alt="College Logo" 
+                      className="w-14 h-14 object-contain" 
+                      referrerPolicy="no-referrer"
+                    />
+                    
+                    <div className="text-center font-black">
+                      <h4 className="text-amber-700 text-sm tracking-[0.25em] uppercase font-serif font-black">NATIONAL SERVICE SCHEME</h4>
+                      <p className="text-slate-500 text-[9px] uppercase tracking-widest font-mono">Affiliated to the University of Calicut</p>
+                      <p className="text-slate-400 text-[8px] uppercase tracking-wider">NSS Units 36 &amp; 94 • NSS College Ottapalam</p>
+                    </div>
+
+                    <img 
+                      src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" 
+                      alt="NSS Logo" 
+                      className="w-14 h-14 object-contain" 
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+
+                  <hr className="border-t-2 border-amber-300 w-1/3 mx-auto my-4" />
+
+                  {/* Title of Certificate */}
+                  <div className="space-y-1.5 mt-6">
+                    <h2 className="text-amber-600 font-serif text-3xl font-black tracking-widest uppercase">Merit Certificate</h2>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">of Exemplary Service &amp; Community Leadership</p>
+                  </div>
+
+                  {/* Body paragraphs detailing citation */}
+                  <div className="mt-8 text-slate-700 space-y-4 max-w-2xl mx-auto text-sm leading-relaxed font-sans">
+                    <p>This is to certify that</p>
+                    <p className="text-xl font-black text-slate-900 border-b border-dotted border-slate-400 pb-1 max-w-md mx-auto italic font-serif">
+                      {profile?.full_name || storedName}
+                    </p>
+                    <p className="text-xs">
+                      of Department of <strong className="text-slate-800 uppercase">{profile?.department || 'NSS Volunteer Core'}</strong>, has rendered active, selfless community services under NSS Units 36 &amp; 94, completing over <strong>{profile?.points || 120} active service hours</strong>, including participation in the <strong>7-Day Residential Special Camp</strong> during their academic tenure.
+                    </p>
+                    <p className="text-xs italic text-slate-600 px-6 font-medium mt-3 bg-amber-50/40 py-3 rounded-xl border border-amber-100/30">
+                      "{sealedCert?.citation || 'In recognition of outstanding dedication, volunteer mobilization, and passionate leadership during various health, hygiene, literacy, and environmental outreach projects.'}"
+                    </p>
+                  </div>
+
+                  {/* Seals & Signatures Block */}
+                  <div className="mt-12 grid grid-cols-3 items-end gap-4 text-center px-4">
+                    {/* Authorized Program Officer */}
+                    <div className="space-y-4 flex flex-col items-center">
+                      <div className="h-10 flex items-end justify-center select-none font-serif text-amber-800 italic font-black text-sm tracking-wide">
+                        Signed: PO-L3-NSS
+                      </div>
+                      <div className="border-t border-slate-300 pt-1.5 w-full">
+                        <h5 className="text-[10px] font-black uppercase text-slate-800 tracking-wide">Program Officer</h5>
+                        <p className="text-[7px] uppercase font-bold text-slate-400 tracking-wider">NSS Units 36 &amp; 94</p>
+                      </div>
+                    </div>
+
+                    {/* Blue Official Crest Stamp Graphic */}
+                    <div className="flex flex-col items-center justify-center relative scale-110">
+                      <div className="w-16 h-16 rounded-full border-4 border-amber-600/60 flex items-center justify-center p-1 text-[8px] font-black uppercase text-amber-600/80 leading-none select-none tracking-tighter text-center bg-white shadow-inner transform rotate-12 relative">
+                        <span>OFFICIAL SEAL Approved</span>
+                      </div>
+                      <span className="text-[8px] font-mono text-slate-400 mt-2 block">ID: {sealedCert?.certificateId}</span>
+                    </div>
+
+                    {/* Signed Principal */}
+                    <div className="space-y-4 flex flex-col items-center">
+                      <div className="h-10 flex items-end justify-center select-none font-serif text-indigo-950 italic font-black text-sm tracking-wide">
+                        Dr. Rajesh R.
+                      </div>
+                      <div className="border-t border-slate-300 pt-1.5 w-full">
+                        <h5 className="text-[10px] font-black uppercase text-slate-800 tracking-wide">Dr. Rajesh R</h5>
+                        <p className="text-[7px] uppercase font-bold text-slate-400 tracking-wider">College Principal &amp; Patron</p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-4 border-t border-slate-150">
+                <button 
+                  onClick={handlePrintSealedCertificate}
+                  className="flex-1 h-14 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-sm uppercase tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/10"
+                  id="print-sealed-cert-btn"
+                >
+                  <Printer size={18} />
+                  Print / Save Certificate as PDF
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowSealedCertModal(false);
+                  }}
+                  className="px-6 h-14 border-2 border-slate-200 hover:bg-slate-50 text-slate-600 font-extrabold text-sm uppercase rounded-2xl transition-all"
+                >
+                  Close
                 </button>
               </div>
 

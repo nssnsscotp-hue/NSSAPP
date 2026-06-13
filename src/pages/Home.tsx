@@ -7,12 +7,12 @@ import {
   Instagram, MessageCircle, ExternalLink, HelpCircle, ChevronDown, 
   HeartHandshake, ChevronRight, ShieldCheck, Award, Info, BookOpen,
   Sparkles, Check, CheckCircle2, Globe, ArrowUpRight, Smartphone, Monitor,
-  Droplets, Activity, Image as ImageIcon, ChevronLeft
+  Droplets, Activity, Image as ImageIcon, ChevronLeft, Phone
 } from 'lucide-react';
 import { Highlight } from '@/src/pages/types';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/src/lib/firebaseClient';
 
 export default function Home() {
@@ -28,6 +28,45 @@ export default function Home() {
   const [galleryImages, setGalleryImages] = useState<any[]>([]);
   const [isGalleryPaused, setIsGalleryPaused] = useState(false);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Real-time custom state for dynamic website customization config
+  const [webConfig, setWebConfig] = useState<any>(() => {
+    const cached = localStorage.getItem('website_config_settings');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.warn("Could not parse cached website settings.");
+      }
+    }
+    return {
+      principal: {
+        name: "Dr. Rajesh R",
+        role: "PRINCIPAL / CHIEF PATRON",
+        dept: "Patron & Head of Institution",
+        image: "https://i.ibb.co/CKWMvrGV/1000144256.jpg"
+      },
+      po36: {
+        name: "Dr. Aparna B",
+        role: "ASST. PROFESSOR ENGLISH / PO",
+        dept: "NSS Programme Officer (Unit 36)",
+        image: "https://i.ibb.co/jkrny0qs/1000080292-2.jpg"
+      },
+      po94: {
+        name: "Dr. Rakhikrishna R",
+        role: "ASST. PROFESSOR PHYSICS / PO",
+        dept: "NSS Programme Officer (Unit 94)",
+        image: "https://i.ibb.co/S7yYBqrK/1000080292.jpg"
+      },
+      heroTitle: "Not Me But You",
+      heroSubText: "Official NSS Digital Portal",
+      heroDesc: "Developing the collective social responsibility of youth. Program Units 36 and 94 at NSS College Ottapalam foster community living, dynamic medical campaigns, instant emergency blood relief, environmental restoration, and civic literacy campaigns with stellar impact.",
+      heroImage: "https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg",
+      tickerText: "Welcome to NSS College Ottapalam NSS Portal. NSS Program Units 36 & 94 welcome all volunteers and dynamic change-makers! Join us in our journey of youth leadership, blood donations, environmental restorations, and community welfare.",
+      collegeName: "NSS College, Ottapalam",
+      unitsText: "Programme Units 36 & 94"
+    };
+  });
 
   const scrollLeftGallery = () => {
     if (scrollContainerRef.current) {
@@ -265,9 +304,68 @@ export default function Home() {
       })
       .subscribe();
 
+    // Keep website configuration in real-time sync with graceful fallbacks
+    let unsubscribeConfig = () => {};
+    try {
+      const configDocRef = doc(db, 'website_config', 'settings');
+      unsubscribeConfig = onSnapshot(configDocRef, (snap) => {
+        if (snap.exists()) {
+          const val = snap.data();
+          const loaded = {
+            principal: {
+              name: val.principal?.name || "Dr. Rajesh R",
+              role: val.principal?.role || "PRINCIPAL / CHIEF PATRON",
+              dept: val.principal?.dept || "Patron & Head of Institution",
+              image: val.principal?.image || "https://i.ibb.co/CKWMvrGV/1000144256.jpg"
+            },
+            po36: {
+              name: val.po36?.name || "Dr. Aparna B",
+              role: val.po36?.role || "ASST. PROFESSOR ENGLISH / PO",
+              dept: val.po36?.dept || "NSS Programme Officer (Unit 36)",
+              image: val.po36?.image || "https://i.ibb.co/jkrny0qs/1000080292-2.jpg"
+            },
+            po94: {
+              name: val.po94?.name || "Dr. Rakhikrishna R",
+              role: val.po94?.role || "ASST. PROFESSOR PHYSICS / PO",
+              dept: val.po94?.dept || "NSS Programme Officer (Unit 94)",
+              image: val.po94?.image || "https://i.ibb.co/S7yYBqrK/1000080292.jpg"
+            },
+            heroTitle: val.heroTitle || "Not Me But You",
+            heroSubText: val.heroSubText || "Official NSS Digital Portal",
+            heroDesc: val.heroDesc || "Developing the collective social responsibility of youth. Program Units 36 and 94 at NSS College Ottapalam foster community living, dynamic medical campaigns, instant emergency blood relief, environmental restoration, and civic literacy campaigns with stellar impact.",
+            heroImage: val.heroImage || "https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg",
+            tickerText: val.tickerText || "Welcome to NSS College Ottapalam NSS Portal. NSS Program Units 36 & 94 welcome all volunteers and dynamic change-makers! Join us in our journey of youth leadership, blood donations, environmental restorations, and community welfare.",
+            collegeName: val.collegeName || "NSS College, Ottapalam",
+            unitsText: val.unitsText || "Programme Units 36 & 94"
+          };
+          setWebConfig(loaded);
+          localStorage.setItem('website_config_settings', JSON.stringify(loaded));
+        }
+      }, (error) => {
+        console.warn("Website settings config subscription bypassed, using highly-cached localStorage sync:", error);
+      });
+    } catch (e: any) {
+      console.warn("Realtime listener initializer warning:", e.message);
+    }
+
+    // Direct listener for local custom actions within pages
+    const handleLocalUpdate = () => {
+      const cached = localStorage.getItem('website_config_settings');
+      if (cached) {
+        try {
+          setWebConfig(JSON.parse(cached));
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener('website-settings-updated', handleLocalUpdate);
+
     return () => {
       supabase.removeChannel(channel);
       unsubscribeGallery();
+      unsubscribeConfig();
+      window.removeEventListener('website-settings-updated', handleLocalUpdate);
     };
   }, []);
 
@@ -352,6 +450,14 @@ export default function Home() {
       glow: 'rgba(71, 85, 105, 0.12)',
       desc: 'Submit community issues' 
     },
+    { 
+      title: 'Sentinel Shield', 
+      href: '/drug-report', 
+      icon: ShieldCheck, 
+      color: 'from-amber-400/10 to-red-500/10 text-amber-500 border-amber-450/40 hover:bg-amber-500/5 hover:border-amber-400 hover:text-amber-500', 
+      glow: 'rgba(245, 158, 11, 0.12)',
+      desc: 'Report Narcotic/Abuse Cases' 
+    },
   ];
 
   // Animation Variants
@@ -405,7 +511,7 @@ export default function Home() {
       <div 
         className="relative w-full h-auto min-h-[140px] sm:min-h-[190px] flex items-center overflow-hidden border-b-4 border-amber-500 select-none shadow-2xl py-4 sm:py-6 bg-slate-950"
         style={{ 
-          backgroundImage: "url('https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg')",
+          backgroundImage: `url('${webConfig.heroImage || 'https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg'}')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
@@ -438,13 +544,13 @@ export default function Home() {
                 🏛️ Government Aided Institution • ESTD. 1964
               </span>
               <h1 className="text-base sm:text-3.5xl md:text-4.5xl lg:text-5.5xl font-black tracking-tight text-white uppercase leading-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                NSS College, Ottapalam
+                {webConfig.collegeName}
               </h1>
               <h2 className="text-xs sm:text-2xl md:text-3xl lg:text-3.5xl font-extrabold text-slate-100 tracking-wide uppercase leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
                 National Service Scheme
               </h2>
               <p className="text-[10px] sm:text-sm md:text-base font-black text-amber-400 tracking-widest uppercase leading-none">
-                Programme Units 36 & 94
+                {webConfig.unitsText}
               </p>
               <div className="hidden sm:block text-[6.5px] sm:text-[7px] md:text-[7.5px] text-slate-400/90 font-medium uppercase tracking-wider">
                 Affiliated to University of Calicut • NAAC Re-accredited with 'A' Grade
@@ -495,7 +601,7 @@ export default function Home() {
               <div className="animate-marquee text-[11px] text-slate-300 font-semibold tracking-wide py-0.5">
                 <span className="inline-flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 text-emerald-400 font-black uppercase tracking-widest text-[9.5px]">✨ Welcome Note:</span>
-                  <span>Welcome to NSS College Ottapalam NSS Portal. NSS Program Units 36 & 94 welcome all volunteers and dynamic change-makers! Join us in our journey of youth leadership, blood donations, environmental restorations, and community welfare.</span>
+                  <span>{webConfig.tickerText}</span>
                 </span>
               </div>
             </div>
@@ -671,16 +777,15 @@ export default function Home() {
                 className="inline-flex items-center gap-2 bg-brand-50 border border-brand-200/60 px-4 py-1.5 rounded-2xl select-none"
               >
                 <Sparkles className="text-brand-650 w-3.5 h-3.5 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-700">Official NSS Digital Portal</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-700">{webConfig.heroSubText}</span>
               </motion.div>
 
               <motion.h1 
                 variants={textRevealVariants}
                 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-950 leading-[0.95] uppercase relative z-10"
               >
-                Not Me <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-650 via-indigo-600 to-indigo-800 animate-gradient-shift">
-                  But You
+                  {webConfig.heroTitle}
                 </span>
               </motion.h1>
               
@@ -688,7 +793,7 @@ export default function Home() {
                 variants={textRevealVariants}
                 className="text-slate-650 text-sm sm:text-base md:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed font-semibold text-pretty"
               >
-                Developing the collective social responsibility of youth. Program Units 36 and 94 at NSS College Ottapalam foster community living, dynamic medical campaigns, instant emergency blood relief, environmental restoration, and civic literacy campaigns with stellar impact.
+                {webConfig.heroDesc}
               </motion.p>
             </div>
 
@@ -933,6 +1038,56 @@ export default function Home() {
                       );
                     })}
                   </motion.div>
+
+                  {/* HIGH-FIDELITY DRUG-FREE CAMPUS / SENTINEL SHIELD INTERACTIVE HERO SECTION */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1, duration: 0.5 }}
+                    className="relative rounded-[2.5rem] p-8 md:p-10 border border-amber-500/15 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden shadow-2xl"
+                  >
+                    {/* Visual glowing blobs */}
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute bottom-0 left-10 w-60 h-60 bg-red-500/5 rounded-full blur-2xl pointer-events-none" />
+                    
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                      <div className="space-y-4 max-w-xl text-center md:text-left">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-[9px] font-black uppercase tracking-widest leading-none">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                          🔴 DRUG-FREE SENTINEL SHIELD LINE
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <h4 className="text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">
+                            Substance & Abuse Prevention Sentinel
+                          </h4>
+                          <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                            Protecting NSS College campus together. Report suspected drug activity, possession, or general abuse cases completely anonymously. Our direct Red-Line Sentinel encrypts your details with <strong>zero IP records</strong> or credentials required.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto justify-end shrink-0">
+                        <Link
+                          to="/drug-report"
+                          className="h-13 px-6 bg-gradient-to-r from-red-650 to-amber-500 hover:from-red-550 hover:to-amber-400 text-slate-950 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] btn-tactile cursor-pointer"
+                        >
+                          <ShieldCheck size={16} />
+                          <span>Report Anonymously</span>
+                        </Link>
+                        
+                        <a
+                          href="tel:14408"
+                          className="h-13 px-5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 btn-tactile cursor-pointer"
+                        >
+                          <Phone size={14} className="text-amber-500" />
+                          <span>Counseling Hotline</span>
+                        </a>
+                      </div>
+                    </div>
+                  </motion.div>
+
                 </div>
               )}
             </motion.section>
@@ -1337,26 +1492,26 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { 
-                name: "Dr. Rajesh R", 
-                role: "PRINCIPAL / CHIEF PATRON",
-                dept: "Patron & Head of Institution",
-                image: "https://i.ibb.co/CKWMvrGV/1000144256.jpg",
+                name: webConfig.principal.name, 
+                role: webConfig.principal.role,
+                dept: webConfig.principal.dept,
+                image: webConfig.principal.image,
                 accent: "from-brand-600 to-indigo-800",
                 shadow: "shadow-indigo-600/10"
               },
               { 
-                name: "Dr. Aparna B", 
-                role: "ASST. PROFESSOR ENGLISH / PO", 
-                dept: "NSS Programme Officer (Unit 36)",
-                image: "https://i.ibb.co/jkrny0qs/1000080292-2.jpg",
+                name: webConfig.po36.name, 
+                role: webConfig.po36.role, 
+                dept: webConfig.po36.dept,
+                image: webConfig.po36.image,
                 accent: "from-blue-600 to-indigo-700",
                 shadow: "shadow-blue-600/10"
               },
               { 
-                name: "Dr. Rakhikrishna R", 
-                role: "ASST. PROFESSOR PHYSICS / PO", 
-                dept: "NSS Programme Officer (Unit 94)",
-                image: "https://i.ibb.co/S7yYBqrK/1000080292.jpg",
+                name: webConfig.po94.name, 
+                role: webConfig.po94.role, 
+                dept: webConfig.po94.dept,
+                image: webConfig.po94.image,
                 accent: "from-rose-650 to-red-700",
                 shadow: "shadow-rose-600/10"
               }

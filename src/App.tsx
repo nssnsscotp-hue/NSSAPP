@@ -11,6 +11,7 @@ import Announcements from './pages/Announcements';
 import SOS from './pages/SOS';
 import BloodBank from './pages/BloodBank';
 import Complaints from './pages/Complaints';
+import DrugReport from './pages/DrugReport';
 import Gallery from './pages/Gallery';
 import Help from './pages/Help';
 import About from './pages/About';
@@ -175,6 +176,7 @@ export default function App() {
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/help" element={<Help />} />
           <Route path="/about" element={<About />} />
+          <Route path="/drug-report" element={<DrugReport />} />
           
           <Route element={<ProtectedRoute />}>
             {/* Protected Volunteer Routes */}

@@ -12,6 +12,7 @@ import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
 import HighlightsAdmin from '../Admin/HighlightsAdmin';
 import AnnouncementsAdmin from '../Admin/AnnouncementsAdmin';
+import CertificatesSealPrincipal from './CertificatesSealPrincipal';
 
 interface VolunteerProfile {
   id: string;
@@ -43,7 +44,7 @@ export default function PrincipalDashboard() {
   const councilRoomCode = "NSS-CO-EXEC-404";
   const accessClearance = "Level-5 General Patron";
 
-  const [activeTab, setActiveTab] = useState<'attendance' | 'announcements' | 'highlights' | 'stats'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'announcements' | 'highlights' | 'stats' | 'seal_room'>('attendance');
   const [activeSubTab, setActiveSubTab] = useState<'volunteers' | 'records'>('records');
   const [students, setStudents] = useState<VolunteerProfile[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -377,7 +378,8 @@ export default function PrincipalDashboard() {
             { id: 'attendance', name: 'NSS Roster & Attendance Logs', icon: CheckCircle, desc: 'Sort or search records by department / program' },
             { id: 'announcements', name: 'Admin Announcements publisher', icon: Bell, desc: 'Broadcast notifications to all dashboards' },
             { id: 'highlights', name: 'Campus Excellence Pinboard', icon: Trophy, desc: 'Pin highlights list inside home gallery' },
-            { id: 'stats', name: 'Bento Stats & Visual Analytics', icon: School, desc: 'Department statistics distribution charts' }
+            { id: 'stats', name: 'Bento Stats & Visual Analytics', icon: School, desc: 'Department statistics distribution charts' },
+            { id: 'seal_room', name: 'Merit Certificate Seal Room', icon: Award, desc: 'Endorse and issue official merit certificates' }
           ].map((tab) => {
             const Icon = tab.icon;
             const isSelected = activeTab === tab.id;
@@ -879,7 +881,7 @@ export default function PrincipalDashboard() {
                 <HighlightsAdmin />
               </div>
             </motion.div>
-          ) : (
+          ) : activeTab === 'stats' ? (
             <motion.div 
               key="stats-tab"
               initial={{ opacity: 0, y: 15 }}
@@ -1037,6 +1039,16 @@ export default function PrincipalDashboard() {
                 </div>
 
               </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="seal-room-tab"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-8"
+            >
+              <CertificatesSealPrincipal />
             </motion.div>
           )}
 
