@@ -97,7 +97,41 @@ export default function Attendance() {
     }
 
     setLoading(true);
-    setStatus(null);
+    setStatus({ type: 'info', msg: 'Verifying relative secure position... Retrieving GPS lock...' });
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    try {
+      const position = await new Promise<any>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Your browser/device does not support GPS Geolocation services. Please use a modern mobile web browser with location support."));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos),
+          (err) => {
+            let errorMsg = "Please enable Location/GPS Services in your browser settings to mark attendance.";
+            if (err.code === err.PERMISSION_DENIED) {
+              errorMsg = "Location permission is required to mark GPS attendance. Please allow location access when prompted.";
+            } else if (err.code === err.POSITION_UNAVAILABLE) {
+              errorMsg = "Your device GPS was unable to determine your position. Please ensure your device location/GPS is turned ON and try again.";
+            } else if (err.code === err.TIMEOUT) {
+              errorMsg = "Location request timed out. Please stand in an open area and try again.";
+            }
+            reject(new Error(errorMsg));
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      });
+      latitude = position.coords.latitude;
+      longitude = position.coords.longitude;
+    } catch (geoError: any) {
+      console.error("GPS Verification Error:", geoError);
+      setStatus({ type: 'error', msg: geoError.message || "Failed to retrieve precise GPS location. Geolocation access is mandatory for securing this Attendance Portal." });
+      setLoading(false);
+      return;
+    }
 
     try {
       // Ensure session for RLS
@@ -145,7 +179,9 @@ export default function Attendance() {
         .insert([{
           volunteer_name: userProfile.full_name,
           unit: userProfile.unit,
-          event_name: targetProgram.ProgramName
+          event_name: targetProgram.ProgramName,
+          latitude,
+          longitude
         }]);
 
       if (error) {
@@ -169,7 +205,7 @@ export default function Attendance() {
 
       setStatus({ 
         type: 'success', 
-        msg: 'Attendance marked successfully! You earned +100 Master Points. ✅' 
+        msg: `Attendance marked successfully! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}. You earned +100 Master Points. ✅` 
       });
       setAttendanceCode('');
     } catch (err: any) {

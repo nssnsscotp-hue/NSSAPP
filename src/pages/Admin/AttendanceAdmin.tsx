@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Loader2, Download, CheckCircle, Clock, Search, ArrowUpDown, Filter, User, ShieldAlert, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Plus, Loader2, Download, CheckCircle, Clock, Search, ArrowUpDown, Filter, User, ShieldAlert, ArrowLeft, ChevronRight, MapPin } from 'lucide-react';
 import { Program } from '@/src/pages/types';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
@@ -10,6 +10,8 @@ interface AttendanceRecord {
   unit: string;
   event_name: string;
   created_at: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function AttendanceAdmin() {
@@ -156,10 +158,17 @@ export default function AttendanceAdmin() {
   const exportData = () => {
     const dataToExport = activeView === 'records' ? filteredRecords : programs;
     const csvString = [
-      activeView === 'records' ? ["Name", "Unit", "Event", "Date"] : ["ID", "Name", "Code", "Status"],
+      activeView === 'records' ? ["Name", "Unit", "Event", "Date", "Latitude", "Longitude"] : ["ID", "Name", "Code", "Status"],
       ...dataToExport.map(item => 
         activeView === 'records' 
-          ? [(item as AttendanceRecord).volunteer_name, (item as AttendanceRecord).unit, (item as AttendanceRecord).event_name, new Date((item as AttendanceRecord).created_at).toLocaleDateString()]
+          ? [
+              (item as AttendanceRecord).volunteer_name, 
+              (item as AttendanceRecord).unit, 
+              (item as AttendanceRecord).event_name, 
+              new Date((item as AttendanceRecord).created_at).toLocaleDateString(),
+              (item as AttendanceRecord).latitude || '',
+              (item as AttendanceRecord).longitude || ''
+            ]
           : [(item as any).ProgramID, (item as any).ProgramName, (item as any).Code, (item as any).Status]
       )
     ].map(e => e.join(",")).join("\n");
@@ -440,14 +449,15 @@ export default function AttendanceAdmin() {
                       <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400 pl-4">Volunteer Name</th>
                       <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Unit</th>
                       <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Program Name</th>
+                      <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Location (GPS)</th>
                       <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400 pr-4">Marked At</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {loading ? (
-                      <tr><td colSpan={4} className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-slate-300" /></td></tr>
+                      <tr><td colSpan={5} className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-slate-300" /></td></tr>
                     ) : filteredRecords.length === 0 ? (
-                      <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-medium italic">No attendance records found for this program matching your criteria.</td></tr>
+                      <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium italic">No attendance records found for this program matching your criteria.</td></tr>
                     ) : filteredRecords.map((record, idx) => (
                       <tr key={idx} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 pl-4 font-bold text-slate-900 flex items-center gap-3">
@@ -461,6 +471,21 @@ export default function AttendanceAdmin() {
                           <span className="px-2 py-1 bg-blue-50/70 text-blue-600 text-[10px] font-black uppercase rounded">
                             {record.event_name}
                           </span>
+                        </td>
+                        <td className="py-4">
+                          {record.latitude && record.longitude ? (
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-extrabold uppercase rounded border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                            >
+                              <MapPin size={11} className="stroke-[2.5px]" />
+                              <span>View Map</span>
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 text-[9px] uppercase font-bold italic">No GPS</span>
+                          )}
                         </td>
                         <td className="py-4 text-[10px] font-bold text-slate-400 pr-4">
                           {new Date(record.created_at).toLocaleString()}

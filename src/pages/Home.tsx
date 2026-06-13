@@ -803,17 +803,26 @@ export default function Home() {
               className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4"
             >
               {isLoggedIn ? (
-                <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/80 backdrop-blur-md p-2 rounded-3xl border border-slate-200 w-full sm:w-auto shadow-sm">
-                  <div className="px-5 py-2.5 bg-slate-950 text-white rounded-2xl text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs w-full sm:w-auto">
-                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-                    <span>Active: <strong className="text-brand-300">{username}</strong> ({userRole})</span>
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/80 backdrop-blur-md p-2 rounded-3xl border border-slate-200 w-full sm:w-auto shadow-sm">
+                    <div className="px-5 py-2.5 bg-slate-950 text-white rounded-2xl text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs w-full sm:w-auto">
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+                      <span>Active: <strong className="text-brand-300">{username}</strong> ({userRole})</span>
+                    </div>
+                    <Link 
+                      to="/profile"
+                      className="w-full sm:w-auto h-11 px-6 text-xs text-indigo-600 hover:text-indigo-850 font-black uppercase tracking-widest flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span>View Profile Room</span>
+                      <ChevronRight size={14} className="stroke-[3px]" />
+                    </Link>
                   </div>
                   <Link 
-                    to="/profile"
-                    className="w-full sm:w-auto h-11 px-6 text-xs text-indigo-600 hover:text-indigo-850 font-black uppercase tracking-widest flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                    to="/drug-report"
+                    className="w-full sm:w-auto h-14 px-6 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-550 text-slate-950 font-black text-xs uppercase tracking-widest rounded-2xl transition flex items-center justify-center gap-2 hover:translate-y-[-2px] active:scale-95 cursor-pointer shadow-md"
                   >
-                    <span>View Profile Room</span>
-                    <ChevronRight size={14} className="stroke-[3px]" />
+                    <ShieldCheck size={14} />
+                    <span>Report Drug Abuse</span>
                   </Link>
                 </div>
               ) : (
@@ -826,11 +835,18 @@ export default function Home() {
                     <ArrowRight size={14} className="stroke-[3px]" />
                   </Link>
                   <Link 
+                    to="/drug-report"
+                    className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-red-650 to-amber-600 hover:from-red-550 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-widest rounded-2xl transition flex items-center justify-center gap-2 hover:translate-y-[-2px] active:scale-95 cursor-pointer shadow-md"
+                  >
+                    <ShieldCheck size={15} />
+                    <span>Report Drug Abuse</span>
+                  </Link>
+                  <Link 
                     to="/help"
-                    className="w-full sm:w-auto h-14 px-8 bg-white hover:bg-slate-50 border border-slate-200 text-slate-705 font-extrabold text-xs uppercase tracking-widest rounded-2xl transition flex items-center justify-center gap-2 hover:translate-y-[-2px] active:scale-95 cursor-pointer shadow-xs"
+                    className="w-full sm:w-auto h-14 px-8 bg-white hover:bg-slate-50 border border-slate-200 text-slate-705 font-extrabold text-xs uppercase tracking-widest rounded-2xl transition flex items-center justify-center gap-2 hover:translate-y-[-2px] active:scale-95 cursor-pointer shadow-xs whitespace-nowrap"
                   >
                     <HelpCircle size={15} className="text-slate-500" />
-                    <span>NSS Guidelines Portal</span>
+                    <span>NSS Guidelines</span>
                   </Link>
                 </>
               )}
@@ -1019,7 +1035,7 @@ export default function Home() {
                             card.color
                           )}>
                             <Icon size={21} />
-                          </div>
+                          </div>Object
 
                           <div className="space-y-1.5 mt-6 relative z-0">
                             <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-indigo-600 transition-colors leading-tight">
@@ -1037,55 +1053,6 @@ export default function Home() {
                         </motion.div>
                       );
                     })}
-                  </motion.div>
-
-                  {/* HIGH-FIDELITY DRUG-FREE CAMPUS / SENTINEL SHIELD INTERACTIVE HERO SECTION */}
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1, duration: 0.5 }}
-                    className="relative rounded-[2.5rem] p-8 md:p-10 border border-amber-500/15 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden shadow-2xl"
-                  >
-                    {/* Visual glowing blobs */}
-                    <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-                    <div className="absolute bottom-0 left-10 w-60 h-60 bg-red-500/5 rounded-full blur-2xl pointer-events-none" />
-                    
-                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                      <div className="space-y-4 max-w-xl text-center md:text-left">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-[9px] font-black uppercase tracking-widest leading-none">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                          🔴 DRUG-FREE SENTINEL SHIELD LINE
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <h4 className="text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">
-                            Substance & Abuse Prevention Sentinel
-                          </h4>
-                          <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                            Protecting NSS College campus together. Report suspected drug activity, possession, or general abuse cases completely anonymously. Our direct Red-Line Sentinel encrypts your details with <strong>zero IP records</strong> or credentials required.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto justify-end shrink-0">
-                        <Link
-                          to="/drug-report"
-                          className="h-13 px-6 bg-gradient-to-r from-red-650 to-amber-500 hover:from-red-550 hover:to-amber-400 text-slate-950 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] btn-tactile cursor-pointer"
-                        >
-                          <ShieldCheck size={16} />
-                          <span>Report Anonymously</span>
-                        </Link>
-                        
-                        <a
-                          href="tel:14408"
-                          className="h-13 px-5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 btn-tactile cursor-pointer"
-                        >
-                          <Phone size={14} className="text-amber-500" />
-                          <span>Counseling Hotline</span>
-                        </a>
-                      </div>
-                    </div>
                   </motion.div>
 
                 </div>
@@ -1171,6 +1138,57 @@ export default function Home() {
                 </div>
               </div>
 
+            </div>
+          </motion.div>
+        </section>
+
+        {/* HIGH-FIDELITY DRUG-FREE CAMPUS / SENTINEL SHIELD GENERAL HOMEPAGE SECTION */}
+        <section id="drug-sentinel-shield-section" className="relative select-none">
+          <motion.div 
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ duration: 0.6 }}
+            className="relative rounded-[2.5rem] p-8 md:p-10 border border-amber-500/15 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden shadow-2xl"
+          >
+            {/* Visual glowing blobs */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-10 w-60 h-60 bg-red-500/5 rounded-full blur-2xl pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="space-y-4 max-w-xl text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-[9px] font-black uppercase tracking-widest leading-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                  🔴 DRUG-FREE SENTINEL SHIELD LINE
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="text-xl md:text-2xl font-black uppercase italic tracking-tight text-white">
+                    Substance & Abuse Prevention Sentinel
+                  </h4>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                    Protecting NSS College campus together. Report suspected drug activity, possession, or general abuse cases completely anonymously. Our direct Red-Line Sentinel encrypts your details with <strong>zero IP records</strong> or credentials required.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto justify-end shrink-0">
+                <Link
+                  to="/drug-report"
+                  className="h-13 px-6 bg-gradient-to-r from-red-650 to-amber-500 hover:from-red-550 hover:to-amber-400 text-slate-950 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] btn-tactile cursor-pointer animate-pulse-subtle"
+                >
+                  <ShieldCheck size={16} />
+                  <span>Report Anonymously</span>
+                </Link>
+                
+                <a
+                  href="tel:14408"
+                  className="h-13 px-5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 btn-tactile cursor-pointer"
+                >
+                  <Phone size={14} className="text-amber-500" />
+                  <span>Counseling Hotline</span>
+                </a>
+              </div>
             </div>
           </motion.div>
         </section>

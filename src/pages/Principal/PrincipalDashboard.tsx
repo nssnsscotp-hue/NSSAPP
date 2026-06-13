@@ -6,7 +6,7 @@ import {
   LogOut, Filter, BookOpen, Loader2, Bell, Trophy, ShieldAlert,
   ArrowUpDown, Check, ChevronRight, School, Calendar, Award,
   Sparkles, HeartPulse, Activity, CheckCheck, FileSpreadsheet,
-  Zap, UserCheck, ShieldCheck, History, Send, Keyboard, Flame, Compass, HelpCircle
+  Zap, UserCheck, ShieldCheck, History, Send, Keyboard, Flame, Compass, HelpCircle, MapPin
 } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
@@ -33,6 +33,8 @@ interface AttendanceRecord {
   event_name: string;
   created_at: string;
   department?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function PrincipalDashboard() {
@@ -260,8 +262,8 @@ export default function PrincipalDashboard() {
     
     if (activeSubTab === 'records') {
       csvString = [
-        ["Volunteer Name", "Department", "Unit", "Event Name", "Marked Time"],
-        ...filteredAttendance.map(a => [a.volunteer_name, a.department, a.unit, a.event_name, new Date(a.created_at).toLocaleString()])
+        ["Volunteer Name", "Department", "Unit", "Event Name", "Marked Time", "Latitude", "Longitude"],
+        ...filteredAttendance.map(a => [a.volunteer_name, a.department || 'General', a.unit, a.event_name, new Date(a.created_at).toLocaleString(), a.latitude || '', a.longitude || ''])
       ].map(e => e.join(",")).join("\n");
     } else {
       csvString = [
@@ -710,6 +712,7 @@ export default function PrincipalDashboard() {
                               <th className="pb-3 px-4">academic department</th>
                               <th className="pb-3 px-4">nss assigned unit</th>
                               <th className="pb-3 px-4">Campaign/Program name</th>
+                              <th className="pb-3 px-4">LOCATION (GPS)</th>
                               <th className="pb-3 px-4 text-right">Academic ledger timestamp</th>
                             </tr>
                           </thead>
@@ -739,6 +742,21 @@ export default function PrincipalDashboard() {
                                       <Award size={12} className="text-medium text-amber-500" />
                                       {rec.event_name}
                                     </span>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    {rec.latitude && rec.longitude ? (
+                                      <a 
+                                        href={`https://www.google.com/maps/search/?api=1&query=${rec.latitude},${rec.longitude}`}
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase rounded border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                                      >
+                                        <MapPin size={10} className="stroke-[2.5px]" />
+                                        <span>View Map</span>
+                                      </a>
+                                    ) : (
+                                      <span className="text-slate-400 text-[9px] uppercase font-semibold italic">No GPS</span>
+                                    )}
                                   </td>
                                   <td className="py-4 px-4 text-right">
                                     <span className="block text-[11px] text-slate-500 font-mono font-bold">

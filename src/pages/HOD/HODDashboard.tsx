@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { 
   Users, CheckCircle, GraduationCap, Download, Search, 
-  LogOut, Shield, ArrowUpDown, Filter, BookOpen, Loader2 
+  LogOut, Shield, ArrowUpDown, Filter, BookOpen, Loader2, MapPin 
 } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
@@ -25,6 +25,8 @@ interface AttendanceRecord {
   unit: string;
   event_name: string;
   created_at: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function HODDashboard() {
@@ -157,10 +159,10 @@ export default function HODDashboard() {
   const exportCSV = () => {
     const csvString = [
       activeTab === 'records' 
-        ? ["Volunteer Name", "Unit", "Event Name", "Marked Time"] 
+        ? ["Volunteer Name", "Unit", "Event Name", "Marked Time", "Latitude", "Longitude"] 
         : ["Full Name", "Username", "Unit ID", "Contact No", "Master Points"],
       ...(activeTab === 'records' 
-        ? filteredAttendance.map(a => [a.volunteer_name, a.unit, a.event_name, new Date(a.created_at).toLocaleString()])
+        ? filteredAttendance.map(a => [a.volunteer_name, a.unit, a.event_name, new Date(a.created_at).toLocaleString(), a.latitude || '', a.longitude || ''])
         : filteredStudents.map(s => [s.full_name, s.username, s.unit, s.mobile, s.points]))
     ].map(e => e.join(",")).join("\n");
 
@@ -371,6 +373,7 @@ export default function HODDashboard() {
                     <th className="pb-4 px-6 text-left">Student</th>
                     <th className="pb-4 px-6 text-left">Unit</th>
                     <th className="pb-4 px-6 text-left">Program / Event Name</th>
+                    <th className="pb-4 px-6 text-left">Location (GPS)</th>
                     <th className="pb-4 px-6 text-right">Marked Date</th>
                   </tr>
                 </thead>
@@ -392,6 +395,21 @@ export default function HODDashboard() {
                           </span>
                         </td>
                         <td className="py-5 px-6 text-xs text-slate-800 font-bold">{a.event_name}</td>
+                        <td className="py-5 px-6">
+                          {a.latitude && a.longitude ? (
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${a.latitude},${a.longitude}`}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase rounded border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                            >
+                              <MapPin size={11} className="stroke-[2.5px]" />
+                              <span>View Map</span>
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 text-[9px] uppercase font-bold italic">No GPS</span>
+                          )}
+                        </td>
                         <td className="py-5 px-6 text-right text-xs text-slate-400 font-mono">
                           {new Date(a.created_at).toLocaleString('en-GB', {
                             day: '2-digit',
@@ -405,7 +423,7 @@ export default function HODDashboard() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="py-20 text-center text-slate-400 italic text-sm">
+                      <td colSpan={5} className="py-20 text-center text-slate-400 italic text-sm">
                         No attendance logs found for this department's volunteers.
                       </td>
                     </tr>
