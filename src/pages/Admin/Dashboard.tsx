@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -6,7 +6,8 @@ import {
   Plus, Settings, CheckCircle, XCircle, Loader2, Calendar, FolderOpen,
   Image as ImageIcon, Contact, GraduationCap, HelpCircle, Database, Trash2,
   ArrowLeft, Award, History, LayoutDashboard, ChevronDown, ChevronRight, Search, 
-  Sparkles, Shield, AlertTriangle, Filter, LayoutGrid
+  Sparkles, Shield, AlertTriangle, Filter, LayoutGrid, Columns, Sliders, Command, 
+  Menu, Maximize2, Compass
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
@@ -133,10 +134,368 @@ export default function AdminDashboard() {
   const [isLoadingStorage, setIsLoadingStorage] = useState(true);
   const [uploadedFilesList, setUploadedFilesList] = useState<any[]>([]);
   
+  // Core layout design switcher settings
+  type MenuStyleType = 'sidebar' | 'hybrid-top' | 'immersive-launchpad';
+  const [menuStyle, setMenuStyle] = useState<MenuStyleType>(() => {
+    return (localStorage.getItem('nss_admin_menustyle') as MenuStyleType) || 'sidebar';
+  });
+  const [showLaunchpadOverlay, setShowLaunchpadOverlay] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const changeMenuStyle = (style: MenuStyleType) => {
+    setMenuStyle(style);
+    localStorage.setItem('nss_admin_menustyle', style);
+  };
+
   // Custom navigation state variables
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [mobileCategoryFilter, setMobileCategoryFilter] = useState('all');
+
+  // Helper sub-components for dynamic administrator styles
+  const LayoutStyleToggle = () => (
+    <div className="bg-white/5 border border-white/10 p-1 rounded-xl flex items-center justify-between w-full">
+      <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 pl-2">
+        Hub:
+      </div>
+      <div className="flex gap-0.5">
+        <button 
+          onClick={() => changeMenuStyle('sidebar')}
+          className={cn(
+            "p-1.5 rounded-lg transition-all cursor-pointer",
+            menuStyle === 'sidebar' ? "bg-blue-600 text-white shadow-xs" : "text-slate-400 hover:text-white hover:bg-white/5"
+          )}
+          title="Classic Sidebar"
+        >
+          <Columns size={11} />
+        </button>
+        <button 
+          onClick={() => changeMenuStyle('hybrid-top')}
+          className={cn(
+            "p-1.5 rounded-lg transition-all cursor-pointer",
+            menuStyle === 'hybrid-top' ? "bg-blue-600 text-white shadow-xs" : "text-slate-400 hover:text-white hover:bg-white/5"
+          )}
+          title="Compact Topbar"
+        >
+          <Menu size={11} />
+        </button>
+        <button 
+          onClick={() => {
+            changeMenuStyle('immersive-launchpad');
+            setActiveTab('overview');
+          }}
+          className={cn(
+            "p-1.5 rounded-lg transition-all cursor-pointer",
+            menuStyle === 'immersive-launchpad' ? "bg-blue-600 text-white shadow-xs" : "text-slate-400 hover:text-white hover:bg-white/5"
+          )}
+          title="App Launchpad"
+        >
+          <LayoutGrid size={11} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const CategoryHorizontalSwitcher = () => {
+    const currentCategory = menuCategories.find(cat => cat.items.some(item => item.id === activeTab));
+    if (!currentCategory || activeTab === 'overview') return null;
+
+    return (
+      <div className="bg-white border border-slate-100 rounded-2xl p-2 px-3 shadow-2xs flex items-center justify-between gap-4 overflow-x-auto scrollbar-none mb-6">
+        <div className="flex items-center gap-1.5 text-slate-400 shrink-0 select-none">
+          <currentCategory.icon size={11} className="text-slate-500" />
+          <span className="text-[9px] font-black uppercase tracking-widest leading-none">{currentCategory.title}:</span>
+        </div>
+
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
+          {currentCategory.items.map((item) => {
+            const isSelected = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all duration-150 cursor-pointer flex items-center gap-1.5 active:scale-95",
+                  isSelected
+                    ? "bg-slate-950 text-white shadow-xs"
+                    : "bg-slate-50 hover:bg-slate-100/50 border border-slate-100/50 text-slate-500 hover:text-slate-800"
+                )}
+              >
+                <item.icon size={10} className={isSelected ? "text-white" : "text-slate-450"} />
+                <span>{item.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="px-2.5 py-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all shrink-0 cursor-pointer"
+        >
+          Console
+        </button>
+      </div>
+    );
+  };
+
+  const DashboardTopNavbar = () => (
+    <header className="sticky top-0 z-50 w-full bg-slate-900 border-b border-white/10 text-white shadow-md px-6 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="flex items-center justify-between w-full md:w-auto">
+        <div className="flex items-center gap-3">
+          <div className="flex -space-x-2 shrink-0">
+            <div className="w-8 h-8 bg-white rounded-lg p-0.5 flex items-center justify-center transform -rotate-3">
+              <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="College Logo" />
+            </div>
+            <div className="w-8 h-8 bg-white rounded-lg p-0.5 flex items-center justify-center transform rotate-3 border border-slate-100 shadow-sm">
+              <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="NSS Logo" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-xs sm:text-sm font-black tracking-tight uppercase italic leading-none flex items-center gap-1">
+              <span>Admin Hub</span>
+              <span className="text-[8px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 not-italic uppercase font-bold tracking-wide">COMPACT</span>
+            </h1>
+            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mt-0.5">Units 36 & 94</p>
+          </div>
+        </div>
+
+        {/* Small switches on mobile */}
+        <div className="md:hidden flex items-center gap-1.5">
+          <button 
+            onClick={() => setActiveTab('overview')}
+            className={cn(
+              "px-2 px-3 py-1.5 text-[9px] font-black uppercase bg-white/5 rounded-lg",
+              activeTab === 'overview' ? "text-blue-400" : "text-slate-400"
+            )}
+          >
+            Overview
+          </button>
+          <button 
+            onClick={() => navigate('/')} 
+            className="p-1.5 bg-white/5 border border-white/15 rounded-lg text-slate-400 focus:text-white"
+          >
+            <ArrowLeft size={12} />
+          </button>
+        </div>
+      </div>
+
+      {/* Ribbon for desktop dropdown switches */}
+      <div className="hidden md:flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-2xl">
+        <button 
+          onClick={() => {
+            setActiveTab('overview');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className={cn(
+            "px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer",
+            activeTab === 'overview' ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-white hover:bg-white/5"
+          )}
+        >
+          Overview Hub
+        </button>
+
+        {menuCategories.map((cat, i) => {
+          const isActiveCat = activeTab !== 'overview' && cat.items.some(item => item.id === activeTab);
+          return (
+            <div key={i} className="relative group/topitem">
+              <button 
+                className={cn(
+                  "px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-1 cursor-pointer",
+                  isActiveCat
+                    ? "bg-blue-600 text-white font-bold shadow-sm"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <cat.icon size={11} />
+                <span>{cat.title}</span>
+              </button>
+
+              <div className="absolute top-[130%] left-1/2 -translate-x-1/2 pt-1 w-64 opacity-0 pointer-events-none group-hover/topitem:opacity-100 group-hover/topitem:pointer-events-auto transition-all duration-200 z-[9999]">
+                <div className="bg-slate-950/95 border border-white/15 p-2 rounded-2xl shadow-2xl backdrop-blur-xl">
+                  <div className="px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest text-slate-500 border-b border-white/5 mb-1.5 leading-none">
+                    {cat.title}
+                  </div>
+                  <div className="space-y-0.5">
+                    {cat.items.map((item) => {
+                      const isSel = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className={cn(
+                            "w-full text-left px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer",
+                            isSel 
+                              ? "bg-blue-600 text-white font-bold" 
+                              : "text-slate-300 hover:text-white hover:bg-white/10"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <item.icon size={12} className={cn("shrink-0", isSel ? "text-white" : "text-slate-500")} />
+                            <span className="truncate">{item.name}</span>
+                          </div>
+                          {isSel && <div className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden md:flex items-center gap-3">
+        <div className="relative">
+          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input 
+            type="text"
+            placeholder="Search console..."
+            value={menuSearchQuery}
+            onChange={(e) => setMenuSearchQuery(e.target.value)}
+            className="w-36 bg-white/5 border border-white/15 rounded-xl py-1.5 pl-8 pr-4 outline-none text-white text-[11px] focus:border-blue-500/50 transition-all font-semibold"
+          />
+        </div>
+
+        <div className="w-24 shrink-0">
+          <LayoutStyleToggle />
+        </div>
+
+        <button
+          onClick={() => navigate('/')}
+          className="p-1.5 bg-white/5 hover:bg-rose-600 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all cursor-pointer shrink-0"
+          title="Exit Hub Console"
+        >
+          <ArrowLeft size={13} />
+        </button>
+      </div>
+    </header>
+  );
+
+  const CommandLaunchpadOverlay = () => {
+    const [q, setQ] = useState('');
+    const overlayInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      if (showLaunchpadOverlay) {
+        setTimeout(() => overlayInputRef.current?.focus(), 80);
+      }
+    }, [showLaunchpadOverlay]);
+
+    if (!showLaunchpadOverlay) return null;
+
+    const matches = allFlatItems.filter(item => 
+      item.name.toLowerCase().includes(q.toLowerCase()) ||
+      item.description.toLowerCase().includes(q.toLowerCase())
+    );
+
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 sm:p-10 md:p-20 overflow-hidden">
+        <div 
+          onClick={() => setShowLaunchpadOverlay(false)}
+          className="absolute inset-0 bg-slate-950/75 backdrop-blur-md transition-all duration-300"
+        />
+
+        <div className="relative w-full max-w-2xl bg-slate-900 border border-white/15 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-full text-white">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+          
+          <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between gap-4">
+            <div className="flex-1 flex items-center gap-3">
+              <Command size={18} className="text-blue-400 shrink-0" />
+              <input
+                ref={overlayInputRef}
+                type="text"
+                placeholder="Type directory command (e.g. storage, certificates, enrollees)..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="w-full bg-transparent border-none outline-none text-sm text-white placeholder-slate-400 font-bold"
+              />
+            </div>
+            <button 
+              onClick={() => setShowLaunchpadOverlay(false)}
+              className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-black text-slate-400 hover:text-white transition-all shrink-0 cursor-pointer"
+            >
+              ESC
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 px-1 leading-none">
+              Control Panel Command Roster ({matches.length})
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {matches.map((item) => {
+                const isSelected = activeTab === item.id;
+                const pathCat = menuCategories.find(c => c.items.some(i => i.id === item.id));
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setShowLaunchpadOverlay(false);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={cn(
+                      "group p-3.5 rounded-2xl border text-left flex gap-3.5 transition-all outline-none cursor-pointer hover:shadow-lg active:scale-98",
+                      isSelected 
+                        ? "bg-blue-600/20 border-blue-500 text-white" 
+                        : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 text-slate-300 hover:text-white"
+                    )}
+                  >
+                    <div className={cn(
+                      "p-2 rounded-lg border flex items-center justify-center shrink-0 mt-0.5",
+                      isSelected ? "bg-blue-600 border-blue-500 text-white" : "bg-white/5 border-white/5 text-slate-450 group-hover:text-blue-400 group-hover:border-blue-500/35 transition-all shadow-sm"
+                    )}>
+                      <item.icon size={12} />
+                    </div>
+                    
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 leading-none">
+                        <span className="font-extrabold text-xs">{item.name}</span>
+                        {pathCat && (
+                          <span className="text-[8px] font-extrabold uppercase bg-white/10 px-1.5 py-0.5 rounded text-white/60">
+                            {pathCat.title.split(' ')[0]}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[9.5px] mt-1 text-slate-400 line-clamp-2 leading-relaxed font-semibold group-hover:text-slate-300">
+                        {item.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {matches.length === 0 && (
+                <div className="sm:col-span-2 py-10 text-center text-slate-500">
+                  <Search size={22} className="mx-auto text-slate-650 opacity-60 mb-2" />
+                  <p className="text-xs">No administrative commands matching "{q}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-950/70 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-400 font-bold px-6">
+            <span className="flex items-center gap-1.5">
+              <Sparkles size={11} className="text-yellow-400" />
+              <span>Press Alt+M anywhere to toggle menu styles</span>
+            </span>
+            <span className="font-mono text-[9px] text-slate-500">
+              HUD Launcher (Ctrl+K)
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const DEFAULT_SHARDS = [
     { id: 'Program Brochures', label: 'Program Brochures', bucket: '', info: 'Brochures & pamphlets' },
@@ -238,6 +597,30 @@ export default function AdminDashboard() {
     loadStorageMetrics();
   }, [navigate]);
 
+  // Setup keyboard shortcuts for advanced command selection and menu layout toggling
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle menu styles: Alt + M
+      if ((e.code === 'KeyM' || e.key === 'm') && e.altKey) {
+        e.preventDefault();
+        setMenuStyle(prev => {
+          const styles: MenuStyleType[] = ['sidebar', 'hybrid-top', 'immersive-launchpad'];
+          const nextIndex = (styles.indexOf(prev) + 1) % styles.length;
+          const nextStyle = styles[nextIndex];
+          localStorage.setItem('nss_admin_menustyle', nextStyle);
+          return nextStyle;
+        });
+      }
+      // Toggle search command launcher overlay: Ctrl + K or Cmd + K
+      if ((e.code === 'KeyK' || e.key === 'k') && (e.metaKey || e.ctrlKey || e.altKey)) {
+        e.preventDefault();
+        setShowLaunchpadOverlay(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   if (isAuthorized === null) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
@@ -271,151 +654,175 @@ export default function AdminDashboard() {
     return { ...cat, items };
   }).filter(cat => cat.items.length > 0);
 
+  const isSidebarLayout = menuStyle === 'sidebar';
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      {/* Sidebar - Sticky at top on mobile, fixed side navigation on desktop */}
-      <aside className="w-full md:w-80 bg-slate-900 text-white md:min-h-screen sticky top-16 md:top-16 z-40 flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-white/10 shadow-xl">
-        
-        {/* Sidebar Header Block - Fixed, non-scrollable, responsive layout */}
-        <div className="p-4 md:p-6 md:pb-4 border-b border-white/5 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-3 shrink-0">
-                <div className="w-9 h-9 bg-white rounded-xl p-1 flex items-center justify-center transform -rotate-6 shadow-xl">
-                  <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="College Logo" />
-                </div>
-                <div className="w-9 h-9 bg-white rounded-xl p-1 flex items-center justify-center transform rotate-6 shadow-xl border border-slate-100">
-                  <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="NSS Logo" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-sm md:text-base font-black tracking-tighter uppercase italic leading-none">Admin Hub</h1>
-                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">Units 36 & 94</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => navigate('/')}
-              className="h-9 bg-white/5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 text-white border border-white/10 rounded-xl px-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer btn-tactile"
-            >
-              <ArrowLeft size={12} />
-              <span>Exit</span>
-            </button>
-          </div>
-
-          {/* Desktop Search Filter Box */}
-          <div className="hidden md:block relative">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input 
-              type="text"
-              placeholder="Filter admin tools..."
-              value={menuSearchQuery}
-              onChange={(e) => setMenuSearchQuery(e.target.value)}
-              className="w-full text-xs bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/10 focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-8 outline-none text-white placeholder-slate-500 transition-all font-semibold"
-            />
-            {menuSearchQuery && (
-              <button 
-                onClick={() => setMenuSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          {/* Mobile Category Navigation Ribbon Filter - Simplifies navigation on small viewports */}
-          <div className="md:hidden flex flex-col gap-2">
-            <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1">
-              <Filter size={10} />
-              <span>Category Filter:</span>
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              <button
-                onClick={() => setMobileCategoryFilter('all')}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all",
-                  mobileCategoryFilter === 'all' ? "bg-blue-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
-                )}
-              >
-                All Desks
-              </button>
-              {menuCategories.map((cat, i) => (
-                <button
-                  key={i}
-                  onClick={() => setMobileCategoryFilter(cat.title)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all flex items-center gap-1",
-                    mobileCategoryFilter === cat.title ? "bg-indigo-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
-                  )}
-                >
-                  <cat.icon size={10} />
-                  <span>{cat.title}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Categories / Navigation Menu */}
-        <div className="flex-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto scrollbar-none md:p-4">
+    <div className={cn(
+      "min-h-screen bg-slate-50 flex flex-col transition-all duration-300",
+      isSidebarLayout ? "md:flex-row" : "md:flex-col"
+    )}>
+      {/* Sidebar - Sticky at top on mobile, fixed side navigation on desktop. Only render if isSidebarLayout or on mobile */}
+      {(isSidebarLayout || menuStyle === 'immersive-launchpad' || mobileCategoryFilter !== 'all') && (
+        <aside className={cn(
+          "bg-slate-900 text-white flex flex-col shrink-0 border-b shadow-xl transition-all duration-300 z-40",
+          isSidebarLayout 
+            ? "w-full md:w-80 md:min-h-screen sticky top-16 md:top-16 border-white/10 md:border-b-0 md:border-r" 
+            : "w-full md:hidden sticky top-16 border-white/10" // Hide on desktop if not in sidebar layout
+        )}>
           
-          {/* Mobile Navigation View (Dynamic Ribbon) */}
-          <nav className="md:hidden flex gap-2 p-4 pt-1 pb-3 scrollbar-none overflow-x-auto">
-            {allFlatItems
-              .filter(item => {
-                if (mobileCategoryFilter === 'all') return true;
-                const parentCat = menuCategories.find(c => c.items.some(i => i.id === item.id));
-                return parentCat?.title === mobileCategoryFilter;
-              })
-              .map((item) => (
+          {/* Sidebar Header Block - Fixed, non-scrollable, responsive layout */}
+          <div className="p-4 md:p-6 md:pb-4 border-b border-white/5 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-3 shrink-0">
+                  <div className="w-9 h-9 bg-white rounded-xl p-1 flex items-center justify-center transform -rotate-6 shadow-xl">
+                    <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="College Logo" />
+                  </div>
+                  <div className="w-9 h-9 bg-white rounded-xl p-1 flex items-center justify-center transform rotate-6 shadow-xl border border-slate-100">
+                    <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="NSS Logo" />
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-sm md:text-base font-black tracking-tighter uppercase italic leading-none">Admin Hub</h1>
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">Units 36 & 94</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => navigate('/')}
+                  className="h-9 bg-white/5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 text-white border border-white/10 rounded-xl px-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer btn-tactile"
+                >
+                  <ArrowLeft size={12} />
+                  <span>Exit</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Layout Style Switcher in Sidebar (Desktop) */}
+            <div className="hidden md:block">
+              <LayoutStyleToggle />
+            </div>
+
+            {/* Desktop Search Filter Box */}
+            <div className="hidden md:block relative">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input 
+                type="text"
+                placeholder="Filter admin tools..."
+                value={menuSearchQuery}
+                onChange={(e) => setMenuSearchQuery(e.target.value)}
+                className="w-full text-xs bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/10 focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-8 outline-none text-white placeholder-slate-500 transition-all font-semibold"
+              />
+              {menuSearchQuery && (
+                <button 
+                  onClick={() => setMenuSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Category Navigation Ribbon Filter - Simplifies navigation on small viewports */}
+            <div className="md:hidden flex flex-col gap-2">
+              <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1">
+                <Filter size={10} />
+                <span>Category Filter:</span>
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  onClick={() => setMobileCategoryFilter('all')}
                   className={cn(
-                    "flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap btn-tactile",
-                    activeTab === item.id 
-                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                      : "text-slate-400 bg-white/5 border border-white/5 hover:text-white"
+                    "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all",
+                    mobileCategoryFilter === 'all' ? "bg-blue-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
                   )}
                 >
-                  <item.icon size={13} className="shrink-0" />
-                  <span>{item.name}</span>
+                  All Desks
                 </button>
-              ))}
-          </nav>
-
-          {/* Desktop Navigation View (Accordion Nested Categories with Animations) */}
-          <nav className="hidden md:flex flex-col gap-4">
-            {filteredCategories.map((cat, catIdx) => {
-              const isOpen = !collapsedCategories[cat.title];
-              return (
-                <div key={catIdx} className="space-y-1.5">
+                {menuCategories.map((cat, i) => (
                   <button
-                    onClick={() => toggleCategory(cat.title)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 group cursor-pointer"
+                    key={i}
+                    onClick={() => setMobileCategoryFilter(cat.title)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all flex items-center gap-1",
+                      mobileCategoryFilter === cat.title ? "bg-indigo-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
+                    )}
                   >
-                    <div className="flex items-center gap-2">
-                      <cat.icon size={12} className="text-slate-600 group-hover:text-blue-500 transition-colors" />
-                      <span>{cat.title}</span>
-                    </div>
-                    {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    <cat.icon size={10} />
+                    <span>{cat.title}</span>
                   </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
-                  {isOpen && (
-                    <div className="space-y-0.5 pl-1 border-l border-white/5 ml-4">
-                      {cat.items.map((item) => {
-                        const isSelected = activeTab === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => setActiveTab(item.id)}
-                            className={cn(
-                              "w-full flex items-center justify-between text-left px-3 py-2 rounded-xl text-xs font-semibold tracking-tight transition-all duration-200 group relative truncate",
-                              isSelected 
-                                ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-500/10" 
-                                : "text-slate-400 hover:text-white hover:bg-white/5"
-                            )}
-                          >
+          {/* Categories / Navigation Menu */}
+          <div className="flex-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto scrollbar-none md:p-4">
+            
+            {/* Mobile Navigation View (Dynamic Ribbon) */}
+            <nav className="md:hidden flex gap-2 p-4 pt-1 pb-3 scrollbar-none overflow-x-auto">
+              {allFlatItems
+                .filter(item => {
+                  if (mobileCategoryFilter === 'all') return true;
+                  const parentCat = menuCategories.find(c => c.items.some(i => i.id === item.id));
+                  return parentCat?.title === mobileCategoryFilter;
+                })
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={cn(
+                      "flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap btn-tactile",
+                      activeTab === item.id 
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                        : "text-slate-400 bg-white/5 border border-white/5 hover:text-white"
+                    )}
+                  >
+                    <item.icon size={13} className="shrink-0" />
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+            </nav>
+
+            {/* Desktop Navigation View (Accordion Nested Categories with Animations) */}
+            <nav className="hidden md:flex flex-col gap-4">
+              {filteredCategories.map((cat, catIdx) => {
+                const isOpen = !collapsedCategories[cat.title];
+                return (
+                  <div key={catIdx} className="space-y-1.5">
+                    <button
+                      onClick={() => toggleCategory(cat.title)}
+                      className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <cat.icon size={12} className="text-slate-600 group-hover:text-blue-500 transition-colors" />
+                        <span>{cat.title}</span>
+                      </div>
+                      {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </button>
+
+                    {isOpen && (
+                      <div className="space-y-0.5 pl-1 border-l border-white/5 ml-4">
+                        {cat.items.map((item) => {
+                          const isSelected = activeTab === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setActiveTab(item.id);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between text-left px-3 py-2 rounded-xl text-xs font-semibold tracking-tight transition-all duration-200 group relative truncate",
+                                isSelected 
+                                  ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-500/10" 
+                                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                              )}
+                            >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <item.icon size={14} className={cn("shrink-0", isSelected ? "text-white" : "text-slate-500 group-hover:text-slate-300")} />
                               <span className="truncate">{item.name}</span>
@@ -441,9 +848,16 @@ export default function AdminDashboard() {
           </nav>
         </div>
       </aside>
+    )}
+
+      {menuStyle === 'hybrid-top' && <DashboardTopNavbar />}
 
       {/* Main Content */}
-      <main className="flex-1 p-4 sm:p-6 md:p-10 min-w-0">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 min-w-0 relative pb-28">
+        
+        {/* Horizontal Category Switcher ribbon - allows instant crosss-navigation of grouped tools */}
+        <CategoryHorizontalSwitcher />
+
         {activeTab === 'overview' && (
           <div className="space-y-8 md:space-y-10">
             <header>
@@ -994,6 +1408,83 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* Modern, floating system design controller dock at the viewport center bottom */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 transform hover:scale-[1.03]">
+        <div className="bg-slate-900/95 border border-white/10 p-2 text-white/90 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-3">
+          
+          {/* Back trigger */}
+          <button
+            onClick={() => {
+              setActiveTab('overview');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={cn(
+              "p-2.5 rounded-full transition-all cursor-pointer flex items-center justify-center relative group",
+              activeTab === 'overview' ? "bg-white/10 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
+            )}
+            title="Overview Hub Screen"
+          >
+            <Home size={13} />
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-950/90 border border-white/10 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap duration-150 pointer-events-none">
+              Console Overview
+            </span>
+          </button>
+
+          {/* Divider */}
+          <div className="w-[1px] h-5 bg-white/10" />
+
+          {/* HUD Trigger */}
+          <button
+            onClick={() => setShowLaunchpadOverlay(true)}
+            className="p-2.5 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-full text-white shadow-md shadow-blue-500/10 flex items-center justify-center relative group cursor-pointer"
+            title="Trigger Search Launchpad HUD (Ctrl+K)"
+          >
+            <Command size={13} />
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-950/90 border border-white/10 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap duration-150 pointer-events-none">
+              Instant Launcher (Ctrl+K)
+            </span>
+          </button>
+
+          {/* Divider */}
+          <div className="w-[1px] h-5 bg-white/10" />
+
+          {/* Quick preset switchers */}
+          <div className="flex bg-white/5 p-0.5 rounded-full border border-white/5">
+            {[
+              { id: 'sidebar', label: 'Classic Sidebar', icon: Columns },
+              { id: 'hybrid-top', label: 'Compact Topbar', icon: Menu },
+              { id: 'immersive-launchpad', label: 'Full App Launchpad', icon: LayoutGrid }
+            ].map((style) => {
+              const active = menuStyle === style.id;
+              return (
+                <button
+                  key={style.id}
+                  onClick={() => {
+                    changeMenuStyle(style.id as any);
+                    if (style.id === 'immersive-launchpad') {
+                      setActiveTab('overview');
+                    }
+                  }}
+                  className={cn(
+                    "p-1.5 rounded-full transition-all flex items-center justify-center relative group cursor-pointer",
+                    active ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <style.icon size={11} />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-950/90 border border-white/10 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap duration-150 pointer-events-none">
+                    {style.label} Style
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+        </div>
+      </div>
+
+      {/* Keyboard-linked immersive HUD overlay dialog */}
+      <CommandLaunchpadOverlay />
     </div>
   );
 }
