@@ -3,6 +3,8 @@ import {
   History, Monitor, Smartphone, Globe, Search, RefreshCw, 
   Trash2, ShieldCheck, UserCheck, CalendarDays, Loader2, AlertCircle 
 } from 'lucide-react';
+import { db } from '@/src/lib/firebaseClient';
+import { collection, getDocs, query, orderBy, limit, doc, deleteDoc } from 'firebase/firestore';
 
 interface LoginLog {
   id: string;
@@ -28,84 +30,56 @@ export default function LoginStatsAdmin() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/login-logs');
-      if (!res.ok) {
-        let errorMsg = `HTTP Error ${res.status} [${res.statusText || 'No Status Detail'}]`;
-        try {
-          const errData = await res.json();
-          if (errData && errData.error) {
-            errorMsg += `: ${errData.error}`;
-          }
-        } catch (_) {}
-        throw new Error(errorMsg);
-      }
-      const data = await res.json();
-      if (data.success && Array.isArray(data.list)) {
-        setLogs(data.list);
-        setIsOffline(false);
-        // Sync local cache with latest real server logs
-        try {
-          localStorage.setItem("nss_login_logs", JSON.stringify(data.list));
-        } catch (_) {}
-      } else {
-        setLogs([]);
-        setIsOffline(false);
-      }
-    } catch (err: any) {
-      console.warn("Live audit logs unavailable. Switching to Local Storage Fallback Cache.", err);
-      setIsOffline(true);
       
-      // Attempt reading local fallback cache
+      // Fetch directly from Firestore (globally persistent cloud storage accessible anywhere)
+      const q = collection(db, 'login_logs');
+      const querySnapshot = await getDocs(q);
+      const list: LoginLog[] = [];
+      querySnapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        list.push({
+          id: d.id || docSnap.id,
+          username: d.username || 'anonymous',
+          name: d.name || 'System User',
+          role: d.role || 'volunteer',
+          mobile: d.mobile || '',
+          ip: d.ip || '127.0.0.1 (Cloud)',
+          userAgent: d.userAgent || 'Unknown Browser',
+          timestamp: d.timestamp || new Date().toISOString()
+        });
+      });
+
+      // Sort with latest logs first
+      list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      const logsToShow = list.slice(0, 1000);
+
+      setLogs(logsToShow);
+      setIsOffline(false);
+    } catch (err: any) {
+      console.warn("Live Firestore login logs unavailable. Trying backend fallback, error:", err);
+      
+      // Fallback: request from server-side local login log database endpoint
       try {
-        const stored = localStorage.getItem("nss_login_logs");
-        if (stored) {
-          const list = JSON.parse(stored);
-          if (Array.isArray(list) && list.length > 0) {
-            setLogs(list);
+        const res = await fetch('/api/login-logs');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.list)) {
+            // Strip out any legacy dummy records from the server list just in case
+            const filtered = data.list.filter((l: any) => 
+              l.username !== "admin_user" && 
+              l.username !== "principalnss" && 
+              l.username !== "nidhin_s"
+            );
+            setLogs(filtered);
+            setIsOffline(true);
             return;
           }
         }
-      } catch (e) {
-        console.error("Failed to parse local storage logs:", e);
+      } catch (innerErr) {
+        console.error("Local server log endpoint also failed:", innerErr);
       }
       
-      // If no cached logs exist yet, seed with standard mock records for a perfect out-of-box feel
-      const fallbackLogsList = [
-        {
-          id: "log-offline-1",
-          username: "admin_user",
-          name: "Master Admin (Recovery)",
-          role: "admin",
-          mobile: "9446112233",
-          ip: "103.54.21.36",
-          userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-          timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
-        },
-        {
-          id: "log-offline-2",
-          username: "principalnss",
-          name: "Dr. NSS Principal",
-          role: "principal",
-          mobile: "",
-          ip: "157.45.102.14",
-          userAgent: "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
-          timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
-        },
-        {
-          id: "log-offline-3",
-          username: "nidhin_s",
-          name: "Nidhin Suresh",
-          role: "volunteer",
-          mobile: "9012345678",
-          ip: "49.37.158.204",
-          userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/537.36",
-          timestamp: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
-        }
-      ];
-      setLogs(fallbackLogsList);
-      try {
-        localStorage.setItem("nss_login_logs", JSON.stringify(fallbackLogsList));
-      } catch (_) {}
+      setError(err.message || 'Error loading live cloud statistics');
     } finally {
       setLoading(false);
     }
@@ -123,25 +97,28 @@ export default function LoginStatsAdmin() {
     try {
       setIsPurging(true);
       
-      // Delete from client
+      // Delete from Firestore directly
       try {
-        localStorage.removeItem('nss_login_logs');
-      } catch (_) {}
-      
-      if (isOffline) {
-        setLogs([]);
-        alert('All local/cached connection records have been securely shredded!');
-      } else {
-        try {
-          const res = await fetch('/api/login-logs', { method: 'DELETE' });
-          if (!res.ok) throw new Error('Action denied');
-          setLogs([]);
-          alert('All system connection records have been securely shredded!');
-        } catch (err: any) {
-          setLogs([]);
-          alert('System connection records cleared locally (Offline mode).');
-        }
+        const q = query(collection(db, 'login_logs'));
+        const querySnapshot = await getDocs(q);
+        const deletePromises: Promise<any>[] = [];
+        querySnapshot.forEach((docSnap) => {
+          deletePromises.push(deleteDoc(doc(db, 'login_logs', docSnap.id)));
+        });
+        await Promise.all(deletePromises);
+      } catch (firestoreErr) {
+        console.error("Failed to purge Firestore logs:", firestoreErr);
       }
+
+      // Also request server purge if available
+      try {
+        await fetch('/api/login-logs', { method: 'DELETE' });
+      } catch (err) {
+        console.warn("Server logs purge bypassed (running offline/static client):", err);
+      }
+      
+      setLogs([]);
+      alert('All connection statistics have been securely shredded from Firestore!');
     } catch (err: any) {
       alert(`Purge aborted: ${err.message}`);
     } finally {
@@ -251,8 +228,8 @@ export default function LoginStatsAdmin() {
           <div className="flex items-center gap-2.5">
             <AlertCircle size={18} className="text-amber-600 shrink-0" />
             <div>
-              <span className="font-extrabold text-amber-900 block sm:inline">Offline Cache Active:</span>
-              <span className="text-amber-700 ml-1 font-semibold">The server audit endpoint is unreachable (e.g. running on client-only platform like GitHub Pages). Standard browser local storage is being used to capture and preview new logs.</span>
+              <span className="font-extrabold text-amber-900 block sm:inline">Local Backup Active:</span>
+              <span className="text-amber-700 ml-1 font-semibold">The direct cloud connection is offline. Connection logs have automatically fallen back to the local backend JSON backup registry.</span>
             </div>
           </div>
           <button 
@@ -260,7 +237,7 @@ export default function LoginStatsAdmin() {
             onClick={fetchLogs} 
             className="w-full sm:w-auto px-4 py-2 bg-amber-100 hover:bg-amber-150 text-amber-900 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-amber-200/50 cursor-pointer shrink-0"
           >
-            Reconnect Audit
+            Reconnect Firestore
           </button>
         </div>
       )}

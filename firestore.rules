@@ -48,6 +48,12 @@ service cloud.firestore {
       allow read, update, delete: if true;
     }
 
+    // 4.7 Login logs for persistent and accessible statistics
+    match /login_logs/{logId} {
+      allow create: if isValidLoginLog(request.resource.data);
+      allow read, delete: if true;
+    }
+
     // 5. Connectivity verification check rules
     match /test_connectivity_check/{docId} {
       allow read, write: if true;
@@ -100,6 +106,27 @@ service cloud.firestore {
         && data.location is string
         && data.details is string
         && data.timeline is string;
+    }
+
+    function isValidLoginLog(data) {
+      return data.id is string
+        && data.id.size() >= 1
+        && data.id.size() <= 128
+        && data.username is string
+        && data.username.size() >= 1
+        && data.username.size() <= 128
+        && data.name is string
+        && data.name.size() <= 128
+        && data.role is string
+        && data.role.size() <= 128
+        && data.mobile is string
+        && data.mobile.size() <= 128
+        && data.ip is string
+        && data.ip.size() <= 128
+        && data.userAgent is string
+        && data.userAgent.size() <= 1024
+        && data.timestamp is string
+        && data.timestamp.size() <= 128;
     }
   }
 }

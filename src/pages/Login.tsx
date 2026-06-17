@@ -6,6 +6,8 @@ import { GAS_URLS } from '@/src/lib/constants';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 import bcrypt from 'bcryptjs';
+import { db } from '@/src/lib/firebaseClient';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,49 +16,36 @@ export default function Login() {
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const recordLogin = (username: string, fullName: string, role: string, mobile?: string) => {
-    // Save to server if reachable
+  const recordLogin = async (username: string, fullName: string, role: string, mobile?: string) => {
+    const timestampStr = new Date().toISOString();
+    const logId = `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const newLog = {
+      id: logId,
+      username: username || 'anonymous',
+      name: fullName || 'System User',
+      role: role || 'volunteer',
+      mobile: mobile || '',
+      ip: '127.0.0.1 (Cloud Direct)',
+      userAgent: navigator.userAgent || 'Mozilla/5.0 Client',
+      timestamp: timestampStr
+    };
+
+    // Save directly to Firestore (globally persistent and accessible across environments)
+    try {
+      const docRef = doc(db, 'login_logs', logId);
+      await setDoc(docRef, newLog);
+    } catch (e) {
+      console.error("Firestore Direct login logging failed:", e);
+    }
+
+    // Save to local backup server if reachable
     fetch("/api/login-logs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username,
-        name: fullName,
-        role,
-        mobile: mobile || ''
-      })
+      body: JSON.stringify(newLog)
     }).catch(err => {
-      console.warn("Server login logging unsupported or offline:", err);
+      console.warn("Local server connection logger offline or unused:", err);
     });
-
-    // Always record locally in localStorage as a high-fidelity fallback for offline/static platforms like GitHub Pages
-    try {
-      const stored = localStorage.getItem("nss_login_logs");
-      let list = stored ? JSON.parse(stored) : [];
-      if (!Array.isArray(list)) list = [];
-      
-      const newLocalLog = {
-        id: `log-local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        username: username || 'anonymous',
-        name: fullName || 'System User',
-        role: role || 'volunteer',
-        mobile: mobile || '',
-        ip: '127.0.0.1 (Client Cache)',
-        userAgent: navigator.userAgent || 'Mozilla/5.0 Client',
-        timestamp: new Date().toISOString()
-      };
-
-      list.unshift(newLocalLog);
-      
-      // Restrict local log bloat
-      if (list.length > 500) {
-        list = list.slice(0, 500);
-      }
-      
-      localStorage.setItem("nss_login_logs", JSON.stringify(list));
-    } catch (e) {
-      console.error("Local login log capture err:", e);
-    }
   };
 
   useEffect(() => {

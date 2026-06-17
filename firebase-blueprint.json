@@ -125,6 +125,22 @@
         "adminComment": { "type": "string" }
       },
       "required": ["id", "type", "location", "details", "timeline", "created_at"]
+    },
+    "LoginLog": {
+      "title": "Login Log",
+      "description": "Log records kept securely when a volunteer or admin logs in",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "mobile": { "type": "string" },
+        "ip": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "username", "name", "role", "timestamp"]
     }
   },
   "firestore": {
@@ -151,6 +167,10 @@
     "drug_reports": {
       "schema": "DrugReport",
       "description": "Secure, anonymous submissions of substance or abuse cases"
+    },
+    "login_logs": {
+      "schema": "LoginLog",
+      "description": "Cloud audit log records of login events"
     }
   }
 }

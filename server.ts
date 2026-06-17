@@ -614,38 +614,7 @@ async function startServer() {
   // =========================================================================
   const loginLogsPath = path.join(uploadDir, "login_logs.json");
   if (!fs.existsSync(loginLogsPath)) {
-    fs.writeFileSync(loginLogsPath, JSON.stringify([
-      {
-        id: "log-initial-1",
-        username: "admin_user",
-        name: "Master Admin (Recovery)",
-        role: "admin",
-        mobile: "9446112233",
-        ip: "103.54.21.36",
-        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
-      },
-      {
-        id: "log-initial-2",
-        username: "principalnss",
-        name: "Dr. NSS Principal",
-        role: "principal",
-        mobile: "",
-        ip: "157.45.102.14",
-        userAgent: "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
-        timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
-      },
-      {
-        id: "log-initial-3",
-        username: "nidhin_s",
-        name: "Nidhin Suresh",
-        role: "volunteer",
-        mobile: "9012345678",
-        ip: "49.37.158.204",
-        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/537.36",
-        timestamp: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
-      }
-    ], null, 2));
+    fs.writeFileSync(loginLogsPath, JSON.stringify([], null, 2));
   }
 
   app.get("/api/login-logs", (req, res) => {

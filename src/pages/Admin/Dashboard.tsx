@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, Bell, ShieldAlert, Heart, Trophy, BarChart3, Home,
   Plus, Settings, CheckCircle, XCircle, Loader2, Calendar, FolderOpen,
   Image as ImageIcon, Contact, GraduationCap, HelpCircle, Database, Trash2,
-  ArrowLeft, Award, History
+  ArrowLeft, Award, History, LayoutDashboard, ChevronDown, ChevronRight, Search, 
+  Sparkles, Shield, AlertTriangle, Filter, LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
@@ -30,6 +31,100 @@ import LoginStatsAdmin from './LoginStatsAdmin';
 
 type AdminTab = 'overview' | 'highlights' | 'announcements' | 'complaints' | 'attendance' | 'volunteers' | 'quiz' | 'gallery' | 'alumni' | 'blood' | 'ids' | 'arrival' | 'storage' | 'website' | 'merit_clearance' | 'drug_reports' | 'login_stats';
 
+interface MenuItem {
+  id: AdminTab;
+  name: string;
+  icon: React.ComponentType<any>;
+  description: string;
+  badge?: string;
+}
+
+interface MenuCategory {
+  title: string;
+  description: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  accentClass: string;
+  bgClass: string;
+  borderClass: string;
+  items: MenuItem[];
+}
+
+export const menuCategories: MenuCategory[] = [
+  {
+    title: 'Core Panel',
+    description: 'Central console, high-fidelity statistics, and metadata control.',
+    icon: LayoutDashboard,
+    color: 'blue',
+    accentClass: 'text-blue-500 hover:text-blue-600',
+    bgClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20',
+    borderClass: 'border-blue-100',
+    items: [
+      { id: 'overview', name: 'Overview Console', icon: BarChart3, description: 'Core system metrics, daily attendance highlights, and quick widgets.' }
+    ]
+  },
+  {
+    title: 'Volunteers & Merit',
+    description: 'Enlistments, daily metrics, digital badge frames, and clearances.',
+    icon: Users,
+    color: 'indigo',
+    accentClass: 'text-indigo-500 hover:text-indigo-600',
+    bgClass: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20',
+    borderClass: 'border-indigo-100',
+    items: [
+      { id: 'volunteers', name: 'Onboarding Info', icon: Users, description: 'Verify new on-field enrollees and coordinate volunteer validation.' },
+      { id: 'attendance', name: 'Daily Attendance Roll', icon: CheckCircle, description: 'Track general camps, on-field sessions, and continuous rosters.' },
+      { id: 'ids', name: 'Digital NFC ID Cards', icon: Contact, description: 'Frame and print official digital camper credentials and cards.' },
+      { id: 'merit_clearance', name: 'Merit Clearance', icon: Award, description: 'Issue certifications, verify finished hours, and generate clearing slips.' },
+      { id: 'alumni', name: 'Alumni Network', icon: GraduationCap, description: 'Consolidate passout rosters, directories, and senior activity logs.' }
+    ]
+  },
+  {
+    title: 'Safety & Grievance',
+    description: 'Travel tracking, secure hotline claims, and login auditing logs.',
+    icon: Shield,
+    color: 'rose',
+    accentClass: 'text-rose-500 hover:text-rose-600',
+    bgClass: 'bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20',
+    borderClass: 'border-rose-100',
+    items: [
+      { id: 'arrival', name: 'Home Safe Dismissals', icon: Home, description: 'Monitor safe travel states, dismissal logs, and checkout validations.' },
+      { id: 'complaints', name: 'Grievance Hotline', icon: AlertTriangle, description: 'Moderate campus dispute sheets, claims, and active complaints.' },
+      { id: 'drug_reports', name: 'Anonymous Tip Desk', icon: ShieldAlert, description: 'Coordinate secure, anonymous submissions of substance or abuse cases.' },
+      { id: 'login_stats', name: 'Security Auditing', icon: History, description: 'Inspect real-time login histories, connection client IPs, and audit trails.' }
+    ]
+  },
+  {
+    title: 'Events & Media',
+    description: 'Alert broadcasts, trivia modules, donor lists, and photo galleries.',
+    icon: Sparkles,
+    color: 'amber',
+    accentClass: 'text-amber-500 hover:text-amber-600',
+    bgClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20',
+    borderClass: 'border-amber-100',
+    items: [
+      { id: 'highlights', name: 'Activity Milestones', icon: Trophy, description: 'Tweak achievements, field camp highlights, and special awards.' },
+      { id: 'announcements', name: 'Broadcast Alerts', icon: Bell, description: 'Configure active billboards, banner alerts, and immediate broadcast notifications.' },
+      { id: 'gallery', name: 'Photo Galleries', icon: ImageIcon, description: 'Publish official field-work photos, archives, and album directories.' },
+      { id: 'blood', name: 'Rosters & Blood Alerts', icon: Heart, description: 'Track urgent campus blood donor networks and medical requests.' },
+      { id: 'quiz', name: 'Trivia & Quizzes', icon: Trophy, description: 'Create and edit awareness trivia question blocks and test criteria.' }
+    ]
+  },
+  {
+    title: 'System Engines',
+    description: 'Cloud shards distribution, database metrics, and master parameters.',
+    icon: Settings,
+    color: 'emerald',
+    accentClass: 'text-emerald-500 hover:text-emerald-600',
+    bgClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20',
+    borderClass: 'border-emerald-100',
+    items: [
+      { id: 'storage', name: 'Multi-Bucket Storage', icon: FolderOpen, description: 'Divide static uploads into up to 8 independent storage buckets to maximize free slots.' },
+      { id: 'website', name: 'Campus Core Variables', icon: Settings, description: 'Configure site details, unit identities, and active program heads.' }
+    ]
+  }
+];
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -37,6 +132,11 @@ export default function AdminDashboard() {
   const [usedMB, setUsedMB] = useState(25.9);
   const [isLoadingStorage, setIsLoadingStorage] = useState(true);
   const [uploadedFilesList, setUploadedFilesList] = useState<any[]>([]);
+  
+  // Custom navigation state variables
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [mobileCategoryFilter, setMobileCategoryFilter] = useState('all');
 
   const DEFAULT_SHARDS = [
     { id: 'Program Brochures', label: 'Program Brochures', bucket: '', info: 'Brochures & pamphlets' },
@@ -147,91 +247,197 @@ export default function AdminDashboard() {
     );
   }
 
-  const menuItems = [
-    { id: 'overview', name: 'Overview', icon: BarChart3 },
-    { id: 'highlights', name: 'Highlights', icon: Trophy },
-    { id: 'announcements', name: 'Announcements', icon: Bell },
-    { id: 'arrival', name: 'Safety Status', icon: Home },
-    { id: 'complaints', name: 'Complaints', icon: ShieldAlert },
-    { id: 'drug_reports', name: 'Substance Reports', icon: ShieldAlert },
-    { id: 'attendance', name: 'Attendance', icon: CheckCircle },
-    { id: 'gallery', name: 'Activity Gallery', icon: ImageIcon },
-    { id: 'volunteers', name: 'Onboarding', icon: Users },
-    { id: 'ids', name: 'Digitial IDs', icon: Contact },
-    { id: 'alumni', name: 'Alumni Network', icon: GraduationCap },
-    { id: 'blood', name: 'Blood Alerts', icon: Heart },
-    { id: 'quiz', name: 'Quiz Builder', icon: Trophy },
-    { id: 'merit_clearance', name: 'Merit Clearance', icon: Award },
-    { id: 'storage', name: 'Storage Analytics', icon: FolderOpen },
-    { id: 'website', name: 'Website Settings', icon: Settings },
-    { id: 'login_stats', name: 'Login Statistics', icon: History },
-  ];
+  // Helper toggle categories
+  const toggleCategory = (title: string) => {
+    setCollapsedCategories(prev => ({ ...prev, [title]: !prev[title] }));
+  };
 
   const stats = [
     { label: 'Admin Requests', value: '4', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Pending Complaints', value: '12', icon: ShieldAlert, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Pending Complaints', value: '12', icon: ShieldAlert, color: 'text-rose-600', bg: 'bg-rose-50' },
     { label: 'Active Quizzes', value: '3', icon: Trophy, color: 'text-purple-600', bg: 'bg-purple-50' },
     { label: 'New Announcements', value: '2', icon: Bell, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
+  // Flat menu list containing everything for robust querying
+  const allFlatItems = menuCategories.flatMap(c => c.items);
+
+  // Filters for menus in sidebar matching search or category
+  const filteredCategories = menuCategories.map(cat => {
+    const items = cat.items.filter(item => 
+      item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) || 
+      item.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
+    );
+    return { ...cat, items };
+  }).filter(cat => cat.items.length > 0);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Sidebar - Sticky at top on mobile, fixed side navigation on desktop */}
-      <aside className="w-full md:w-72 bg-slate-900 text-white md:min-h-screen sticky top-16 md:top-16 z-40 flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-white/10 shadow-xl">
+      <aside className="w-full md:w-80 bg-slate-900 text-white md:min-h-screen sticky top-16 md:top-16 z-40 flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-white/10 shadow-xl">
         
         {/* Sidebar Header Block - Fixed, non-scrollable, responsive layout */}
-        <div className="p-4 md:p-8 md:pb-4 border-b border-white/5 flex flex-row md:flex-col items-center md:items-stretch justify-between md:justify-start gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-3 shrink-0">
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-xl p-1 flex items-center justify-center transform -rotate-6 shadow-xl">
-                <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="College Logo" />
+        <div className="p-4 md:p-6 md:pb-4 border-b border-white/5 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-3 shrink-0">
+                <div className="w-9 h-9 bg-white rounded-xl p-1 flex items-center justify-center transform -rotate-6 shadow-xl">
+                  <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="College Logo" />
+                </div>
+                <div className="w-9 h-9 bg-white rounded-xl p-1 flex items-center justify-center transform rotate-6 shadow-xl border border-slate-100">
+                  <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="NSS Logo" />
+                </div>
               </div>
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-xl p-1 flex items-center justify-center transform rotate-6 shadow-xl border border-slate-100">
-                <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" className="w-full h-full object-contain" referrerPolicy="no-referrer" alt="NSS Logo" />
+              <div>
+                <h1 className="text-sm md:text-base font-black tracking-tighter uppercase italic leading-none">Admin Hub</h1>
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">Units 36 & 94</p>
               </div>
             </div>
-            <div>
-              <h1 className="text-sm md:text-base font-black tracking-tighter uppercase italic leading-none">Admin Hub</h1>
-              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500 mt-1">Units 36 & 94</p>
-            </div>
-          </div>
 
-          <div className="md:mt-4 shrink-0 md:shrink">
             <button
               onClick={() => navigate('/')}
-              className="h-9 md:h-11 bg-white/5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 text-white border border-white/10 rounded-xl px-3 md:px-4 flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer btn-tactile"
+              className="h-9 bg-white/5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 text-white border border-white/10 rounded-xl px-3 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer btn-tactile"
             >
-              <ArrowLeft size={14} className="md:w-4 md:h-4" />
-              <span className="hidden sm:inline md:inline">Back to Home</span>
-              <span className="sm:hidden md:hidden">Home</span>
+              <ArrowLeft size={12} />
+              <span>Exit</span>
             </button>
+          </div>
+
+          {/* Desktop Search Filter Box */}
+          <div className="hidden md:block relative">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input 
+              type="text"
+              placeholder="Filter admin tools..."
+              value={menuSearchQuery}
+              onChange={(e) => setMenuSearchQuery(e.target.value)}
+              className="w-full text-xs bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/10 focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-8 outline-none text-white placeholder-slate-500 transition-all font-semibold"
+            />
+            {menuSearchQuery && (
+              <button 
+                onClick={() => setMenuSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Category Navigation Ribbon Filter - Simplifies navigation on small viewports */}
+          <div className="md:hidden flex flex-col gap-2">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1">
+              <Filter size={10} />
+              <span>Category Filter:</span>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setMobileCategoryFilter('all')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all",
+                  mobileCategoryFilter === 'all' ? "bg-blue-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
+                )}
+              >
+                All Desks
+              </button>
+              {menuCategories.map((cat, i) => (
+                <button
+                  key={i}
+                  onClick={() => setMobileCategoryFilter(cat.title)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all flex items-center gap-1",
+                    mobileCategoryFilter === cat.title ? "bg-indigo-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
+                  )}
+                >
+                  <cat.icon size={10} />
+                  <span>{cat.title}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Separator / Subtitle - only on desktop */}
-        <div className="hidden md:block px-8 pt-6 pb-2">
-          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Management</h2>
-        </div>
+        {/* Categories / Navigation Menu */}
+        <div className="flex-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto scrollbar-none md:p-4">
+          
+          {/* Mobile Navigation View (Dynamic Ribbon) */}
+          <nav className="md:hidden flex gap-2 p-4 pt-1 pb-3 scrollbar-none overflow-x-auto">
+            {allFlatItems
+              .filter(item => {
+                if (mobileCategoryFilter === 'all') return true;
+                const parentCat = menuCategories.find(c => c.items.some(i => i.id === item.id));
+                return parentCat?.title === mobileCategoryFilter;
+              })
+              .map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={cn(
+                    "flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap btn-tactile",
+                    activeTab === item.id 
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                      : "text-slate-400 bg-white/5 border border-white/5 hover:text-white"
+                  )}
+                >
+                  <item.icon size={13} className="shrink-0" />
+                  <span>{item.name}</span>
+                </button>
+              ))}
+          </nav>
 
-        {/* Scrollable Navigation Menu Item Containers */}
-        {/* On mobile: horizontal scroll menu. On desktop: vertical menu list with clean vertical scroll if needed */}
-        <div className="flex-1 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto scrollbar-none">
-          <nav className="flex md:flex-col gap-2 md:space-y-1 p-4 md:p-8 md:pt-0 pb-3 md:pb-6">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as AdminTab)}
-                className={cn(
-                  "flex-shrink-0 flex items-center gap-2.5 md:gap-3 px-3.5 md:px-4 py-2.5 md:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 whitespace-nowrap btn-tactile",
-                  activeTab === item.id 
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
-                )}
-              >
-                <item.icon size={16} className="shrink-0 md:w-[18px] md:h-[18px]" />
-                <span>{item.name}</span>
-              </button>
-            ))}
+          {/* Desktop Navigation View (Accordion Nested Categories with Animations) */}
+          <nav className="hidden md:flex flex-col gap-4">
+            {filteredCategories.map((cat, catIdx) => {
+              const isOpen = !collapsedCategories[cat.title];
+              return (
+                <div key={catIdx} className="space-y-1.5">
+                  <button
+                    onClick={() => toggleCategory(cat.title)}
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <cat.icon size={12} className="text-slate-600 group-hover:text-blue-500 transition-colors" />
+                      <span>{cat.title}</span>
+                    </div>
+                    {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  </button>
+
+                  {isOpen && (
+                    <div className="space-y-0.5 pl-1 border-l border-white/5 ml-4">
+                      {cat.items.map((item) => {
+                        const isSelected = activeTab === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className={cn(
+                              "w-full flex items-center justify-between text-left px-3 py-2 rounded-xl text-xs font-semibold tracking-tight transition-all duration-200 group relative truncate",
+                              isSelected 
+                                ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-500/10" 
+                                : "text-slate-400 hover:text-white hover:bg-white/5"
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <item.icon size={14} className={cn("shrink-0", isSelected ? "text-white" : "text-slate-500 group-hover:text-slate-300")} />
+                              <span className="truncate">{item.name}</span>
+                            </div>
+                            {isSelected && (
+                              <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0 shadow-xs" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            
+            {filteredCategories.length === 0 && (
+              <div className="px-4 py-8 text-center text-slate-500 text-xs">
+                <Search size={20} className="mx-auto text-slate-600 mb-2 opacity-55" />
+                <span>No matching tools found</span>
+              </div>
+            )}
           </nav>
         </div>
       </aside>
@@ -257,6 +463,67 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* NEW: Comprehensive Command Launchpad Desks */}
+            <div className="space-y-6 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-black uppercase tracking-tight text-slate-900 flex items-center gap-2">
+                    <LayoutGrid size={18} className="text-blue-600" />
+                    <span>Administrative Command Desks</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Explore grouped management utilities and telemetry desks below with instant single-tap navigation.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {menuCategories
+                  .filter(cat => cat.title !== 'Core Panel') // Core Panel is just Overview which is active
+                  .map((cat, catIdx) => (
+                    <div 
+                      key={catIdx} 
+                      className="bg-white p-6 rounded-[2.5rem] border border-slate-100/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-all duration-300"
+                    >
+                      <div>
+                        {/* Section Header */}
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className={cn("p-2 rounded-xl border", cat.bgClass)}>
+                            <cat.icon size={16} />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-sm leading-none">{cat.title}</h3>
+                            <p className="text-[10px] text-slate-400 mt-1 font-semibold">{cat.description}</p>
+                          </div>
+                        </div>
+
+                        {/* List/Grid of Tools inside category */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          {cat.items.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setActiveTab(item.id);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="group flex items-start gap-3 p-3.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-100 hover:border-blue-100/80 hover:bg-white rounded-2xl text-left transition-all duration-200 cursor-pointer hover:shadow-xs active:scale-[0.98]"
+                            >
+                              <div className="p-2 bg-white rounded-lg border border-slate-100 text-slate-500 group-hover:text-blue-600 group-hover:border-blue-200 transition-all shrink-0 mt-0.5 shadow-2xs">
+                                <item.icon size={13} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-blue-900/90 group-hover:text-blue-700 transition-colors flex items-center gap-1.5 leading-none">
+                                  <span>{item.name}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed group-hover:text-slate-500 font-medium">{item.description}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
