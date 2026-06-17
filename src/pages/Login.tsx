@@ -15,6 +15,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   const recordLogin = (username: string, fullName: string, role: string, mobile?: string) => {
+    // Save to server if reachable
     fetch("/api/login-logs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -24,7 +25,38 @@ export default function Login() {
         role,
         mobile: mobile || ''
       })
-    }).catch(err => console.error("Login logging failed:", err));
+    }).catch(err => {
+      console.warn("Server login logging unsupported or offline:", err);
+    });
+
+    // Always record locally in localStorage as a high-fidelity fallback for offline/static platforms like GitHub Pages
+    try {
+      const stored = localStorage.getItem("nss_login_logs");
+      let list = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(list)) list = [];
+      
+      const newLocalLog = {
+        id: `log-local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        username: username || 'anonymous',
+        name: fullName || 'System User',
+        role: role || 'volunteer',
+        mobile: mobile || '',
+        ip: '127.0.0.1 (Client Cache)',
+        userAgent: navigator.userAgent || 'Mozilla/5.0 Client',
+        timestamp: new Date().toISOString()
+      };
+
+      list.unshift(newLocalLog);
+      
+      // Restrict local log bloat
+      if (list.length > 500) {
+        list = list.slice(0, 500);
+      }
+      
+      localStorage.setItem("nss_login_logs", JSON.stringify(list));
+    } catch (e) {
+      console.error("Local login log capture err:", e);
+    }
   };
 
   useEffect(() => {
