@@ -5,7 +5,7 @@ import {
   Users, Bell, ShieldAlert, Heart, Trophy, BarChart3, Home,
   Plus, Settings, CheckCircle, XCircle, Loader2, Calendar, FolderOpen,
   Image as ImageIcon, Contact, GraduationCap, HelpCircle, Database, Trash2,
-  ArrowLeft, Award
+  ArrowLeft, Award, History
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
@@ -26,8 +26,9 @@ import HomeArrivalAdmin from './HomeArrivalAdmin';
 import WebsiteSettingsAdmin from './WebsiteSettingsAdmin';
 import CertificatesClearanceAdmin from './CertificatesClearanceAdmin';
 import DrugReportsAdmin from './DrugReportsAdmin';
+import LoginStatsAdmin from './LoginStatsAdmin';
 
-type AdminTab = 'overview' | 'highlights' | 'announcements' | 'complaints' | 'attendance' | 'volunteers' | 'quiz' | 'gallery' | 'alumni' | 'blood' | 'ids' | 'arrival' | 'storage' | 'website' | 'merit_clearance' | 'drug_reports';
+type AdminTab = 'overview' | 'highlights' | 'announcements' | 'complaints' | 'attendance' | 'volunteers' | 'quiz' | 'gallery' | 'alumni' | 'blood' | 'ids' | 'arrival' | 'storage' | 'website' | 'merit_clearance' | 'drug_reports' | 'login_stats';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -163,6 +164,7 @@ export default function AdminDashboard() {
     { id: 'merit_clearance', name: 'Merit Clearance', icon: Award },
     { id: 'storage', name: 'Storage Analytics', icon: FolderOpen },
     { id: 'website', name: 'Website Settings', icon: Settings },
+    { id: 'login_stats', name: 'Login Statistics', icon: History },
   ];
 
   const stats = [
@@ -375,6 +377,7 @@ export default function AdminDashboard() {
         {activeTab === 'arrival' && <HomeArrivalAdmin />}
         {activeTab === 'website' && <WebsiteSettingsAdmin />}
         {activeTab === 'merit_clearance' && <CertificatesClearanceAdmin />}
+        {activeTab === 'login_stats' && <LoginStatsAdmin />}
         {activeTab === 'storage' && (
           <div className="space-y-8 md:space-y-10">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

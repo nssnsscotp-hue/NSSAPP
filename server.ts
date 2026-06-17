@@ -609,6 +609,102 @@ async function startServer() {
     }
   });
 
+  // =========================================================================
+  // NSS Login Logs Local Database Fallback
+  // =========================================================================
+  const loginLogsPath = path.join(uploadDir, "login_logs.json");
+  if (!fs.existsSync(loginLogsPath)) {
+    fs.writeFileSync(loginLogsPath, JSON.stringify([
+      {
+        id: "log-initial-1",
+        username: "admin_user",
+        name: "Master Admin (Recovery)",
+        role: "admin",
+        mobile: "9446112233",
+        ip: "103.54.21.36",
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "log-initial-2",
+        username: "principalnss",
+        name: "Dr. NSS Principal",
+        role: "principal",
+        mobile: "",
+        ip: "157.45.102.14",
+        userAgent: "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+        timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+      },
+      {
+        id: "log-initial-3",
+        username: "nidhin_s",
+        name: "Nidhin Suresh",
+        role: "volunteer",
+        mobile: "9012345678",
+        ip: "49.37.158.204",
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/537.36",
+        timestamp: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
+      }
+    ], null, 2));
+  }
+
+  app.get("/api/login-logs", (req, res) => {
+    try {
+      if (fs.existsSync(loginLogsPath)) {
+        const data = fs.readFileSync(loginLogsPath, "utf-8");
+        res.json({ success: true, list: JSON.parse(data) });
+      } else {
+        res.json({ success: true, list: [] });
+      }
+    } catch (err: any) {
+      console.error("Local login logs read error:", err);
+      res.status(500).json({ error: "Failed to read local login logs" });
+    }
+  });
+
+  app.post("/api/login-logs", (req, res) => {
+    try {
+      const { username, name, role, mobile } = req.body;
+      const list = fs.existsSync(loginLogsPath) ? JSON.parse(fs.readFileSync(loginLogsPath, "utf-8")) : [];
+      
+      const rawIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+      const clientIp = rawIp.split(',')[0].trim().replace(/^::ffff:/, '');
+
+      const newLog = {
+        id: `log-${Date.now()}`,
+        username: username || 'anonymous',
+        name: name || 'System User',
+        role: role || 'volunteer',
+        mobile: mobile || '',
+        ip: clientIp,
+        userAgent: req.headers['user-agent'] || 'Unknown Browser',
+        timestamp: new Date().toISOString()
+      };
+
+      list.unshift(newLog);
+      
+      // Restrict log bloat to last 1000 entries
+      if (list.length > 1000) {
+        list.splice(1000);
+      }
+      
+      fs.writeFileSync(loginLogsPath, JSON.stringify(list, null, 2));
+      res.status(201).json({ success: true, item: newLog });
+    } catch (err: any) {
+      console.error("Local login logs register error:", err);
+      res.status(500).json({ error: "Failed to register login log" });
+    }
+  });
+
+  app.delete("/api/login-logs", (req, res) => {
+    try {
+      fs.writeFileSync(loginLogsPath, JSON.stringify([], null, 2));
+      res.json({ success: true, message: "Login logs purged successfully." });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to delete login logs." });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

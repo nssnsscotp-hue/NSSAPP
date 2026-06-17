@@ -14,6 +14,19 @@ export default function Login() {
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
+  const recordLogin = (username: string, fullName: string, role: string, mobile?: string) => {
+    fetch("/api/login-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        name: fullName,
+        role,
+        mobile: mobile || ''
+      })
+    }).catch(err => console.error("Login logging failed:", err));
+  };
+
   useEffect(() => {
     if (localStorage.getItem("isLoggedIn") === "true") {
       const role = localStorage.getItem("role");
@@ -35,6 +48,7 @@ export default function Login() {
   const [clickCount, setClickCount] = useState(0);
 
   const handleBypass = () => {
+    recordLogin("admin_fixer", "System Support", "admin", "");
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("justLoggedIn", "true");
     localStorage.setItem("user", "admin_fixer");
@@ -76,6 +90,7 @@ export default function Login() {
     
     // EMERGENCY MASTER PASSWORD BYPASS
     if (sanitizedPass === 'nss_global_fix_2026' && sanitizedUser === 'admin_user') {
+      recordLogin("admin_user", "Master Admin (Recovery)", "admin", "9446112233");
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("justLoggedIn", "true");
       localStorage.setItem("user", "admin_user");
@@ -89,6 +104,7 @@ export default function Login() {
     
     // PRINCIPAL CREDENTIALS BYPASS
     if (sanitizedUser === 'principalnss' && sanitizedPass === '@principal3694') {
+      recordLogin("principalnss", "Dr. NSS Principal", "principal", "");
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("justLoggedIn", "true");
       localStorage.setItem("user", "principalnss");
@@ -155,6 +171,7 @@ export default function Login() {
             console.log("Password match result:", isMatch);
 
             if (isMatch) {
+              recordLogin(profile.username, profile.full_name, profile.role || 'volunteer', profile.mobile);
               loginFinished = true;
               clearTimeout(loginTimeout);
               console.log("Success! Setting session and navigating...");
@@ -242,6 +259,7 @@ export default function Login() {
               }
 
               if (isMatch) {
+                recordLogin(hodProfile.username, hodProfile.full_name, 'hod', hodProfile.mobile);
                 loginFinished = true;
                 clearTimeout(loginTimeout);
                 localStorage.setItem("isLoggedIn", "true");
