@@ -650,22 +650,40 @@ async function startServer() {
 
   app.get("/api/login-logs", (req, res) => {
     try {
+      let list = [];
       if (fs.existsSync(loginLogsPath)) {
-        const data = fs.readFileSync(loginLogsPath, "utf-8");
-        res.json({ success: true, list: JSON.parse(data) });
+        try {
+          const data = fs.readFileSync(loginLogsPath, "utf-8");
+          list = JSON.parse(data);
+          if (!Array.isArray(list)) list = [];
+        } catch (e) {
+          console.warn("login_logs.json holds invalid JSON, resetting to empty list.");
+          fs.writeFileSync(loginLogsPath, JSON.stringify([], null, 2));
+        }
       } else {
-        res.json({ success: true, list: [] });
+        fs.writeFileSync(loginLogsPath, JSON.stringify([], null, 2));
       }
+      res.json({ success: true, list });
     } catch (err: any) {
       console.error("Local login logs read error:", err);
-      res.status(500).json({ error: "Failed to read local login logs" });
+      res.status(500).json({ error: "Failed to read local login logs", details: err.message });
     }
   });
 
   app.post("/api/login-logs", (req, res) => {
     try {
       const { username, name, role, mobile } = req.body;
-      const list = fs.existsSync(loginLogsPath) ? JSON.parse(fs.readFileSync(loginLogsPath, "utf-8")) : [];
+      
+      let list = [];
+      if (fs.existsSync(loginLogsPath)) {
+        try {
+          const data = fs.readFileSync(loginLogsPath, "utf-8");
+          list = JSON.parse(data);
+          if (!Array.isArray(list)) list = [];
+        } catch (e) {
+          list = [];
+        }
+      }
       
       const rawIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
       const clientIp = rawIp.split(',')[0].trim().replace(/^::ffff:/, '');
@@ -692,7 +710,7 @@ async function startServer() {
       res.status(201).json({ success: true, item: newLog });
     } catch (err: any) {
       console.error("Local login logs register error:", err);
-      res.status(500).json({ error: "Failed to register login log" });
+      res.status(500).json({ error: "Failed to register login log", details: err.message });
     }
   });
 

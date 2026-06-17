@@ -262,10 +262,21 @@ export default function LoginStatsAdmin() {
             <p className="text-slate-400 font-extrabold uppercase tracking-widest text-xs animate-pulse">Scanning Cloud Log Registers...</p>
           </div>
         ) : error ? (
-          <div className="py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto p-4 bg-amber-50 rounded-3xl border border-amber-100">
-            <AlertCircle className="text-amber-600 w-12 h-12 mb-3" />
-            <p className="text-amber-800 font-bold text-sm">Offline Cache Active</p>
-            <p className="text-amber-700 text-xs mt-1 leading-relaxed">Failed to query live datastores. Logging server has fallen back to dynamic runtime memory mode. Reconnect soon.</p>
+          <div className="py-16 flex flex-col items-center justify-center text-center max-w-md mx-auto p-6 bg-rose-50/50 rounded-3xl border border-rose-100">
+            <AlertCircle className="text-rose-600 w-12 h-12 mb-3" />
+            <p className="text-rose-800 font-bold text-sm">Auditing Connection Failed</p>
+            <p className="text-rose-600 font-mono text-[10px] mt-1.5 bg-rose-50 border border-rose-100/50 px-2 py-1 rounded max-w-full overflow-x-auto select-all">
+              {error}
+            </p>
+            <p className="text-slate-500 text-[11px] mt-3 leading-relaxed">
+              The logging server might be executing a high-security refresh or is currently unreachable. Check your administrator credentials or rebuild the microservice.
+            </p>
+            <button
+              onClick={fetchLogs}
+              className="mt-4 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+            >
+              Retry Connection
+            </button>
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="py-24 flex flex-col items-center justify-center text-center max-w-sm mx-auto">
