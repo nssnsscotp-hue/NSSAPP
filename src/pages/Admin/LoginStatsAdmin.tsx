@@ -29,7 +29,14 @@ export default function LoginStatsAdmin() {
       setError(null);
       const res = await fetch('/api/login-logs');
       if (!res.ok) {
-        throw new Error(`Failed to load login statistics: ${res.statusText}`);
+        let errorMsg = `HTTP Error ${res.status} [${res.statusText || 'No Status Detail'}]`;
+        try {
+          const errData = await res.json();
+          if (errData && errData.error) {
+            errorMsg += `: ${errData.error}`;
+          }
+        } catch (_) {}
+        throw new Error(errorMsg);
       }
       const data = await res.json();
       if (data.success && Array.isArray(data.list)) {
