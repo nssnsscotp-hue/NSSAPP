@@ -29,6 +29,7 @@ import NSSAssistant from './components/Assistant/NSSAssistant';
 import Profile from './pages/Profile';
 import HODDashboard from './pages/HOD/HODDashboard';
 import PrincipalDashboard from './pages/Principal/PrincipalDashboard';
+import Emergency from './pages/Emergency';
 
 // Layout wrapper to conditionally show navbar with welcome popup capability
 function Layout({ children }: { children: React.ReactNode }) {
@@ -177,6 +178,7 @@ export default function App() {
           <Route path="/help" element={<Help />} />
           <Route path="/about" element={<About />} />
           <Route path="/drug-report" element={<DrugReport />} />
+          <Route path="/emergency" element={<Emergency />} />
           
           <Route element={<ProtectedRoute />}>
             {/* Protected Volunteer Routes */}

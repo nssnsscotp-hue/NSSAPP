@@ -1193,6 +1193,73 @@ export default function Home() {
           </motion.div>
         </section>
 
+        {/* PUBLIC SAFETY AND CIVIL EMERGENCY DIRECTORY HUB HERO SPOTLIGHT */}
+        <section id="public-safety-emergency-hub-section" className="relative select-none">
+          <motion.div 
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ duration: 0.6 }}
+            className="relative rounded-[2.5rem] p-8 md:p-10 border border-red-500/15 bg-gradient-to-br from-rose-950 via-slate-900 to-zinc-950 text-white overflow-hidden shadow-2xl"
+          >
+            {/* Visual glowing elements */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-10 w-80 h-80 bg-rose-500/5 rounded-full blur-2xl pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="space-y-4 max-w-2xl text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-[9px] font-black uppercase tracking-widest leading-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                  <span>🚨 CENTRAL EMERGENCY & WELFARE SYSTEMS</span>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="text-2xl md:text-3xl font-black uppercase italic tracking-tight text-white leading-none">
+                    Public Emergency & Safety Hub
+                  </h4>
+                  <p className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed">
+                    Connecting 112, 101, and all critical statutory helplines. Browse cyber crime coordination guides, women safety act factsheets, mental health counseling circles, or taluk government official rosters. Accessible publicly for collective community welfare.
+                  </p>
+                </div>
+
+                {/* Micro helpline indicators */}
+                <div className="flex flex-wrap justify-center lg:justify-start gap-2 pt-2 text-[10px] font-bold text-slate-350">
+                  <span className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg flex items-center gap-1.5">
+                    <strong>112</strong> Central SOS
+                  </span>
+                  <span className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg flex items-center gap-1.5">
+                    <strong>1091</strong> Women Line
+                  </span>
+                  <span className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg flex items-center gap-1.5">
+                    <strong>1930</strong> Cyber Cell
+                  </span>
+                  <span className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg flex items-center gap-1.5">
+                    <strong>14416</strong> Tele-MANAS
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto justify-end shrink-0">
+                <Link
+                  to="/emergency"
+                  className="h-13 px-8 bg-gradient-to-r from-red-650 to-rose-600 hover:from-red-550 hover:to-rose-500 text-slate-950 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] btn-tactile cursor-pointer animate-pulse-subtle shadow-red-500/10"
+                >
+                  <HeartHandshake size={16} />
+                  <span>Launch Public safety Hub</span>
+                </Link>
+                
+                <Link
+                  to="/sos"
+                  className="h-13 px-6 bg-slate-900 hover:bg-slate-850 border border-slate-850 hover:border-slate-700 text-slate-300 font-black text-xs uppercase tracking-widest rounded-xl transition duration-300 flex items-center justify-center gap-2 btn-tactile cursor-pointer"
+                >
+                  <ShieldCheck size={14} className="text-red-500 animate-pulse" />
+                  <span>SOS Response Panel</span>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </section>
+
         {/* LIVE ACTIVITY SNAPSHOT GALLERY CAROUSEL */}
         <section className="space-y-6 relative select-none">
           <div className="absolute top-[20%] left-[-10%] w-72 h-72 bg-brand-500/5 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse" />
