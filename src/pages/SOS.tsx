@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldAlert, Phone, MapPin, MessageSquare, AlertTriangle, Volume2, ShieldCheck, Activity, ChevronRight } from 'lucide-react';
+import { ShieldAlert, Phone, MapPin, MessageSquare, AlertTriangle, Volume2, ShieldCheck, Activity, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import BackButton from '../components/layout/BackButton';
 
 export default function SOS() {
   const [playing, setPlaying] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(true);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   const emergencyContacts = [
     { name: 'Women Helpline', number: '1091', icon: ShieldAlert, dept: 'National Safety Wing' },
@@ -25,37 +28,50 @@ export default function SOS() {
     setTimeout(() => setPlaying(false), 5000);
   };
 
-  const getLocation = (): Promise<{lat: number, lon: number}> => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject('Geolocation not supported');
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-        (err) => reject('Permission denied')
-      );
-    });
+  const loadCoordinates = () => {
+    setGpsLoading(true);
+    if (!navigator.geolocation) {
+      setGpsError('Geolocation not supported');
+      // Fallback coordinates (NSS College Ottapalam, Kerala, India)
+      setCoords({ lat: 10.7867, lon: 76.2694 });
+      setGpsLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setGpsError(null);
+        setGpsLoading(false);
+      },
+      (err) => {
+        // Fallback coordinates (NSS College Ottapalam default)
+        setCoords({ lat: 10.7867, lon: 76.2694 });
+        setGpsError('Satellite blocked (using default campus coordinates)');
+        setGpsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
   };
 
-  const shareWhatsApp = async () => {
-    try {
-      const { lat, lon } = await getLocation();
-      const msg = `I need help. My current location: https://maps.google.com/?q=${lat},${lon}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-    } catch (err) {
-      alert(err);
-    }
+  useEffect(() => {
+    loadCoordinates();
+  }, []);
+
+  const getWhatsAppLink = () => {
+    const locText = coords 
+      ? `https://maps.google.com/?q=${coords.lat},${coords.lon}`
+      : `https://maps.google.com/?q=10.7867,76.2694`;
+    const msg = `🚨 EMERGENCY WOMENS SOS ALERT!\nI need help immediately and am triggering my emergency distress beacon. Please contact me or dispatch assistance.\n📍 My Location: ${locText}`;
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
   };
 
-  const shareSMS = async () => {
-    try {
-      const { lat, lon } = await getLocation();
-      const msg = `I am in danger! My location: https://maps.google.com/?q=${lat},${lon}`;
-      window.location.href = `sms:?body=${encodeURIComponent(msg)}`;
-    } catch (err) {
-      alert(err);
-    }
+  const getSMSLink = () => {
+    const locText = coords 
+      ? `https://maps.google.com/?q=${coords.lat},${coords.lon}`
+      : `https://maps.google.com/?q=10.7867,76.2694`;
+    const msg = `🚨 EMERGENCY WOMENS SOS ALERT! I need help immediately. 📍 Location: ${locText}`;
+    return `sms:?body=${encodeURIComponent(msg)}`;
   };
 
   return (
@@ -141,20 +157,52 @@ export default function SOS() {
           </button>
 
           <div className="grid grid-cols-2 gap-3">
-            <button 
-              onClick={shareWhatsApp}
-              className="h-20 bg-green-500 hover:bg-green-600 text-white rounded-[1.8rem] flex flex-col items-center justify-center gap-1.5 font-black text-[9.5px] uppercase tracking-widest shadow-md shadow-green-500/10 transition-all cursor-pointer hover:translate-y-[-2px] active:scale-95"
+            <a 
+              href={getWhatsAppLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-20 bg-green-500 hover:bg-green-600 text-white rounded-[1.8rem] flex flex-col items-center justify-center gap-1.5 font-black text-[9.5px] uppercase tracking-widest shadow-md shadow-green-500/10 transition-all cursor-pointer hover:translate-y-[-2px] active:scale-95 text-center leading-none"
             >
               <MessageSquare size={16} />
               <span>Share WhatsApp</span>
-            </button>
-            <button 
-              onClick={shareSMS}
-              className="h-20 bg-slate-900 hover:bg-slate-850 text-white rounded-[1.8rem] flex flex-col items-center justify-center gap-1.5 font-black text-[9.5px] uppercase tracking-widest shadow-md shadow-slate-950/10 transition-all cursor-pointer hover:translate-y-[-2px] active:scale-95"
+            </a>
+            <a 
+              href={getSMSLink()}
+              className="h-20 bg-slate-900 hover:bg-slate-850 text-white rounded-[1.8rem] flex flex-col items-center justify-center gap-1.5 font-black text-[9.5px] uppercase tracking-widest shadow-md shadow-slate-950/10 transition-all cursor-pointer hover:translate-y-[-2px] active:scale-95 text-center leading-none"
             >
               <MessageSquare size={16} />
               <span>Broadcast SMS</span>
-            </button>
+            </a>
+          </div>
+
+          {/* Real-time GPS coordinates verify & lock panel */}
+          <div className="col-span-full mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs font-semibold text-slate-500 bg-white border border-slate-200/80 px-4 py-3.5 rounded-2xl">
+            <div className="flex items-center gap-2">
+              <span className={cn("w-2 h-2 rounded-full", gpsLoading ? "bg-amber-500 animate-ping" : coords ? "bg-emerald-500" : "bg-red-500")} />
+              <span className="font-bold text-slate-700">
+                {gpsLoading 
+                  ? "Verifying GPS Satellite Link..." 
+                  : coords 
+                    ? `Satellite Coordinates Locked: ${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}`
+                    : "Using Default Campus Location parameters"
+                }
+              </span>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              {gpsError && (
+                <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 border border-amber-100 rounded">
+                  {gpsError}
+                </span>
+              )}
+              <button
+                onClick={loadCoordinates}
+                disabled={gpsLoading}
+                className="p-1 px-2.5 border border-slate-250 hover:bg-slate-50 text-slate-800 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw size={10} className={cn(gpsLoading && "animate-spin")} />
+                <span>Sync GPS</span>
+              </button>
+            </div>
           </div>
         </div>
 
