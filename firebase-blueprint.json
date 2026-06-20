@@ -141,6 +141,36 @@
         "timestamp": { "type": "string" }
       },
       "required": ["id", "username", "name", "role", "timestamp"]
+    },
+    "ServiceClearance": {
+      "title": "Service Clearance",
+      "description": "Clearance records detailing volunteer program requirements and recommendations to principal",
+      "type": "object",
+      "properties": {
+        "volunteerId": { "type": "string" },
+        "name": { "type": "string" },
+        "unit": { "type": "string" },
+        "department": { "type": "string" },
+        "campCompleted": { "type": "boolean" },
+        "hoursVerified": { "type": "boolean" },
+        "recommendedToPrincipal": { "type": "boolean" },
+        "recommendedAt": { "type": "string" },
+        "recommendedBy": { "type": "string" }
+      },
+      "required": ["name", "unit", "campCompleted", "hoursVerified", "recommendedToPrincipal"]
+    },
+    "SealedCertificate": {
+      "title": "Sealed Certificate",
+      "description": "Sealed, signed certificates approved and finalized by the College Principal",
+      "type": "object",
+      "properties": {
+        "volunteerId": { "type": "string" },
+        "signedAt": { "type": "string" },
+        "citation": { "type": "string" },
+        "sealApproved": { "type": "boolean" },
+        "certificateId": { "type": "string" }
+      },
+      "required": ["volunteerId", "signedAt", "citation", "sealApproved", "certificateId"]
     }
   },
   "firestore": {
@@ -171,6 +201,14 @@
     "login_logs": {
       "schema": "LoginLog",
       "description": "Cloud audit log records of login events"
+    },
+    "nss_service_clearances": {
+      "schema": "ServiceClearance",
+      "description": "Clearance credentials proposed by Unit Admin / HOD to Principal"
+    },
+    "nss_sealed_certificates": {
+      "schema": "SealedCertificate",
+      "description": "Durable stamped and verified sealed certificates approved by Principal"
     }
   }
 }

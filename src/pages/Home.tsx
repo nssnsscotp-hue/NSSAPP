@@ -881,7 +881,7 @@ export default function Home() {
           >
             <div className="absolute -inset-3 bg-gradient-to-r from-brand-650 to-purple-600 rounded-[2.5rem] blur-2xl opacity-15 group-hover:opacity-25 transition duration-1000" />
             
-            <div className="relative bg-white p-3 rounded-[2.8rem] border border-slate-200/60 shadow-2xl overflow-hidden hover:scale-[1.01] transition-all duration-500">
+            <div className="relative bg-white p-3 rounded-[2.8rem] border border-slate-200/60 shadow-2xl hover:scale-[1.01] transition-all duration-500">
               <div className="relative aspect-[4/3] w-full rounded-[2.2rem] overflow-hidden bg-slate-900">
                 <img 
                   src="https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg" 
@@ -1608,14 +1608,20 @@ export default function Home() {
                 viewport={{ once: true, margin: '-50px' }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}
                 whileHover={{ y: -8, transition: { duration: 0.25 } }}
-                className="group bg-white border border-slate-200 rounded-[2.5rem] p-6 hover:shadow-2xl hover:border-brand-300 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[380px]"
+                className={cn(
+                  "group bg-white border border-slate-200 rounded-[2.5rem] p-6 hover:shadow-2xl transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-full min-h-[410px] md:min-h-[420px]",
+                  i === 0 ? "hover:border-amber-400" : i === 1 ? "hover:border-indigo-400" : "hover:border-rose-400"
+                )}
               >
                 {/* Accent stripe on top */}
                 <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${leader.accent}`} />
                 
-                <div className="space-y-6">
-                  {/* Portrait photo circular with silver background */}
-                  <div className="relative mx-auto w-36 h-36 rounded-full overflow-hidden border-4 border-white shadow-xl shadow-slate-200/90 group-hover:scale-[1.03] transition-transform duration-500">
+                <div className="space-y-6 flex-1 flex flex-col justify-center">
+                  {/* Portrait photo circular with custom color-coded ring matching their NSS station */}
+                  <div className={cn(
+                    "relative mx-auto w-36 h-36 rounded-full border-4 border-white shadow-xl shadow-slate-200/90 group-hover:scale-[1.04] transition-transform duration-500 ring-4 ring-offset-2 overflow-hidden",
+                    i === 0 ? "ring-amber-500/80" : i === 1 ? "ring-indigo-600/80" : "ring-rose-600/80"
+                  )}>
                     <img 
                       src={leader.image} 
                       alt={leader.name} 
@@ -1624,22 +1630,27 @@ export default function Home() {
                     />
                   </div>
 
-                  <div className="text-center space-y-1">
-                    <span className="text-[8.5px] font-black text-brand-600 uppercase tracking-[0.2em] block">
+                  <div className="text-center space-y-1.5">
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-[0.25em] px-2.5 py-0.5 rounded-md inline-block leading-none",
+                      i === 0 ? "text-amber-700 bg-amber-50" : i === 1 ? "text-indigo-700 bg-indigo-50" : "text-rose-700 bg-rose-50"
+                    )}>
                       {leader.role}
                     </span>
-                    <h4 className="font-black text-lg text-slate-900 uppercase tracking-tight leading-none pt-1">
+                    <h4 className="font-black text-xl text-slate-950 uppercase tracking-tight leading-tight pt-1">
                       {leader.name}
                     </h4>
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block pt-1">
+                    <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-widest block pt-0.5 leading-normal">
                       {leader.dept}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex justify-center items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                  <span className="text-[9px] font-mono font-bold uppercase text-slate-500 tracking-wider">Verified Board Member</span>
+                <div className="mt-6 pt-4 border-t border-slate-100 flex justify-center items-center">
+                  <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 transition-colors px-3 py-1 rounded-full border border-slate-100">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-[9px] font-mono font-black uppercase text-slate-600 tracking-wider">Verified Council Core</span>
+                  </div>
                 </div>
               </motion.div>
             ))}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Bell, Plus, Trash2, Loader2, Shield, Smartphone, Send, CheckCircle, Radio } from 'lucide-react';
 import { Announcement } from '@/src/pages/types';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
@@ -11,6 +11,43 @@ export default function AnnouncementsAdmin() {
   const [actioning, setActioning] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({ title: '', content: '' });
+  
+  // Notification options
+  const [notifyDevices, setNotifyDevices] = useState(true);
+  const [priority, setPriority] = useState<'normal' | 'high'>('normal');
+  const [targetAudience, setTargetAudience] = useState<'all' | 'volunteers' | 'officers'>('all');
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setPermissionStatus(Notification.permission);
+    }
+  }, []);
+
+  const triggerTestPush = () => {
+    if (!('Notification' in window)) {
+      alert("Browser does not support notifications.");
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission().then(status => {
+        setPermissionStatus(status);
+        if (status === 'granted') {
+          new Notification("🔔 Test Push Successful!", {
+            body: "This is a direct simulation of the device push notifications that all installed clients receive instantly.",
+            icon: 'https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png'
+          });
+        } else {
+          alert("Notification permission was denied. Enable site notifications to test device-level panel alerts.");
+        }
+      });
+    } else {
+      new Notification("🔔 Test Push Successful!", {
+        body: "This is a direct simulation of the device push notifications that all installed clients receive instantly.",
+        icon: 'https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png'
+      });
+    }
+  };
 
   const fetchAnnouncements = async () => {
     try {
@@ -126,14 +163,76 @@ export default function AnnouncementsAdmin() {
         <div className="lg:col-span-1">
           <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
             <h3 className="font-bold text-slate-900 mb-6 uppercase tracking-widest text-[10px]">Compose</h3>
+            <div className="bg-slate-50 border border-slate-100/50 rounded-2xl p-4 space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                <Smartphone size={12} className="text-blue-500" /> App Notification Settings
+              </span>
+              
+              {/* Toggle to Notify Installed Devices */}
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={notifyDevices} 
+                  onChange={e => setNotifyDevices(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 bg-white"
+                />
+                <span className="text-xs font-bold text-slate-700">Push to Device Notification Panels</span>
+              </label>
+
+              {/* Target Segment Selector */}
+              <div className="space-y-1">
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Target Audience</span>
+                <select 
+                  value={targetAudience} 
+                  onChange={e => setTargetAudience(e.target.value as any)}
+                  className="w-full h-8 px-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="all">Everyone (All Installed Devices)</option>
+                  <option value="volunteers">Volunteers Only</option>
+                  <option value="officers">Programme Officers & Staff</option>
+                </select>
+              </div>
+
+              {/* Priority Selector */}
+              <div className="space-y-1">
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Alert Priority Level</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPriority('normal')}
+                    className={cn(
+                      "flex-1 h-7 rounded text-[10px] font-bold uppercase tracking-wider border transition-all",
+                      priority === 'normal' 
+                        ? "bg-blue-50 text-blue-600 border-blue-200" 
+                        : "bg-white text-slate-500 border-slate-200 hover:bg-slate-100"
+                    )}
+                  >
+                    Normal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriority('high')}
+                    className={cn(
+                      "flex-1 h-7 rounded text-[10px] font-bold uppercase tracking-wider border transition-all",
+                      priority === 'high' 
+                        ? "bg-red-50 text-red-600 border-red-200" 
+                        : "bg-white text-slate-500 border-slate-200 hover:bg-slate-100"
+                    )}
+                  >
+                    Urgent Alert
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <form onSubmit={handlePost} className="space-y-4">
               <input 
-                type="text" required placeholder="Subject" 
+                type="text" required placeholder="Subject / Notification Title" 
                 value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
                 className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-600 font-medium" 
               />
               <textarea 
-                required placeholder="Message body..." 
+                required placeholder="Enter notification message body..." 
                 rows={5}
                 value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})}
                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 font-medium resize-none text-sm" 
@@ -141,11 +240,27 @@ export default function AnnouncementsAdmin() {
               <button
                 disabled={submitting}
                 type="submit"
-                className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/10"
               >
-                {submitting ? <Loader2 className="animate-spin" /> : "🚀 Broadcast News"}
+                {submitting ? <Loader2 className="animate-spin" /> : "🚀 Broadcast News & Push"}
               </button>
             </form>
+
+            {/* Test push simulation block */}
+            <div className="mt-6 pt-6 border-t border-slate-100 text-center space-y-2">
+              <span className="text-[9.5px] text-slate-400 font-bold uppercase tracking-widest block">Notification System Diagnostics</span>
+              <button
+                type="button"
+                onClick={triggerTestPush}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest rounded-xl transition duration-200 flex items-center gap-1.5 mx-auto border border-slate-200"
+              >
+                <Radio size={12} className="text-red-500" />
+                Test Send Notification to Yourself
+              </button>
+              <p className="text-[10px] text-slate-400">
+                Current Permission State: <b className="uppercase text-slate-600">{permissionStatus}</b>
+              </p>
+            </div>
           </div>
         </div>
 

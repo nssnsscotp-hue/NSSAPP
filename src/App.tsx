@@ -30,6 +30,7 @@ import Profile from './pages/Profile';
 import HODDashboard from './pages/HOD/HODDashboard';
 import PrincipalDashboard from './pages/Principal/PrincipalDashboard';
 import Emergency from './pages/Emergency';
+import AppNotificationListener from './components/layout/AppNotificationListener';
 
 // Layout wrapper to conditionally show navbar with welcome popup capability
 function Layout({ children }: { children: React.ReactNode }) {
@@ -69,6 +70,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <AppNotificationListener />
       {!shouldHideNavbar && <Navbar />}
       <main>
         {children}

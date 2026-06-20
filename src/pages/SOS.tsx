@@ -63,7 +63,7 @@ export default function SOS() {
       ? `https://maps.google.com/?q=${coords.lat},${coords.lon}`
       : `https://maps.google.com/?q=10.7867,76.2694`;
     const msg = `🚨 EMERGENCY WOMENS SOS ALERT!\nI need help immediately and am triggering my emergency distress beacon. Please contact me or dispatch assistance.\n📍 My Location: ${locText}`;
-    return `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    return `https://wa.me/?text=${encodeURIComponent(msg)}`;
   };
 
   const getSMSLink = () => {
@@ -71,7 +71,8 @@ export default function SOS() {
       ? `https://maps.google.com/?q=${coords.lat},${coords.lon}`
       : `https://maps.google.com/?q=10.7867,76.2694`;
     const msg = `🚨 EMERGENCY WOMENS SOS ALERT! I need help immediately. 📍 Location: ${locText}`;
-    return `sms:?body=${encodeURIComponent(msg)}`;
+    const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    return isIOS ? `sms:&body=${encodeURIComponent(msg)}` : `sms:?body=${encodeURIComponent(msg)}`;
   };
 
   return (

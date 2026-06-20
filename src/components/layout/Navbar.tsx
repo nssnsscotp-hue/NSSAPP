@@ -12,6 +12,28 @@ export default function Navbar() {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin';
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      const count = parseInt(localStorage.getItem('nss_unread_notif_count') || '0', 10);
+      setUnreadCount(count);
+    };
+
+    updateCount();
+    window.addEventListener('nss_notifications_updated', updateCount);
+    return () => {
+      window.removeEventListener('nss_notifications_updated', updateCount);
+    };
+  }, []);
+
+  // Set count to 0 when user opens/views announcements page
+  useEffect(() => {
+    if (location.pathname === '/announcements') {
+      localStorage.setItem('nss_unread_notif_count', '0');
+      window.dispatchEvent(new Event('nss_notifications_updated'));
+    }
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
@@ -158,6 +180,30 @@ export default function Navbar() {
                 </motion.div>
               ))}
               <div className="w-px h-8 bg-slate-200 mx-2" />
+              
+              {/* Pulsing Alert Notification Bell */}
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="relative">
+                <Link
+                  to="/announcements"
+                  className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 border shadow-md relative",
+                    location.pathname === '/announcements'
+                      ? "bg-brand-50 text-brand-600 border-brand-200"
+                      : "bg-slate-100/90 text-slate-700 border-slate-200/40 hover:bg-slate-200 hover:text-brand-600/90"
+                  )}
+                  title="App Notifications"
+                >
+                  <Bell size={18} className={cn(unreadCount > 0 && "animate-bounce text-red-500")} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-650 text-white rounded-full flex items-center justify-center text-[9px] font-black tracking-tighter shadow-lg shadow-red-500/30 border border-white animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Link>
+              </motion.div>
+
+              <div className="w-px h-8 bg-slate-200 mx-1" />
+
               {isLoggedIn ? (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -205,20 +251,27 @@ export default function Navbar() {
           >
             <div className="glass rounded-[2.5rem] p-3 shadow-2xl border border-white/50 overflow-hidden flex flex-col max-h-[calc(100vh-10rem)]">
               <div className="overflow-y-auto p-1 space-y-1.5 custom-scrollbar">
-                {navItems.map((item) => (
+                 {navItems.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
                     onClick={() => setIsOpen(false)}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
+                      "flex items-center justify-between p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
                       location.pathname === item.href 
                         ? "bg-brand-600 text-white shadow-xl shadow-brand-500/20" 
                         : "text-slate-600 hover:bg-brand-50"
                     )}
                   >
-                    <item.icon size={18} />
-                    {item.name}
+                    <div className="flex items-center gap-4">
+                      <item.icon size={18} />
+                      {item.name}
+                    </div>
+                    {item.name === 'Announcements' && unreadCount > 0 && (
+                      <span className="px-2.5 py-1 bg-red-650 text-white text-[9px] font-black tracking-widest rounded-full animate-pulse shadow-sm shadow-red-500/45 shrink-0">
+                        {unreadCount} NEW
+                      </span>
+                    )}
                   </Link>
                 ))}
               </div>

@@ -23,35 +23,52 @@ service cloud.firestore {
     match /gallery/{itemId} {
       // Allow public reads to see community activities.
       allow read: if true;
-      allow create, update: if isValidGalleryItem(request.resource.data);
-      allow delete: if true;
+      allow create, update: if isSignedIn() && isValidGalleryItem(request.resource.data);
+      allow delete: if isSignedIn();
     }
 
     // 4. Website layout/leadership customization settings rules
     match /website_config/{configId} {
       // Allow public reads for display, and updates for administrative setups
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     // 4.5 Quizzes and Quiz Attempts
     match /quizzes/{quizId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     match /quiz_attempts/{attemptId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     // 4.6 Drug reports matching anonymous submissions
     match /drug_reports/{reportId} {
       allow create: if isValidDrugReport(request.resource.data) && reportId == request.resource.data.id;
-      allow read, update, delete: if true;
+      allow read, update, delete: if isSignedIn();
     }
 
     // 4.7 Login logs for persistent and accessible statistics
     match /login_logs/{logId} {
       allow create: if isValidLoginLog(request.resource.data);
-      allow read, delete: if true;
+      allow read, delete: if isSignedIn();
+    }
+
+    // 4.8 NSS Service Clearances (Volunteers' recommended checklists for principal)
+    match /nss_service_clearances/{volunteerId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidServiceClearance(request.resource.data);
+      allow delete: if false;
+    }
+
+    // 4.9 NSS Sealed Certificates (Sealed & approved certificates signed by principal)
+    match /nss_sealed_certificates/{volunteerId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidSealedCertificate(request.resource.data);
+      allow delete: if false;
     }
 
     // 5. Connectivity verification check rules
@@ -127,6 +144,28 @@ service cloud.firestore {
         && data.userAgent.size() <= 1024
         && data.timestamp is string
         && data.timestamp.size() <= 128;
+    }
+
+    function isValidServiceClearance(data) {
+      return data.name is string 
+        && data.name.size() <= 200
+        && data.unit is string 
+        && data.unit.size() <= 20
+        && data.campCompleted is bool
+        && data.hoursVerified is bool
+        && data.recommendedToPrincipal is bool;
+    }
+
+    function isValidSealedCertificate(data) {
+      return data.volunteerId is string 
+        && data.volunteerId.size() <= 128
+        && data.signedAt is string 
+        && data.signedAt.size() <= 100
+        && data.citation is string 
+        && data.citation.size() <= 15000
+        && data.sealApproved is bool
+        && data.certificateId is string 
+        && data.certificateId.size() <= 128;
     }
   }
 }
