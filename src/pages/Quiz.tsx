@@ -5,7 +5,7 @@ import {
   Award, ChevronRight, History, Calendar, Printer, RefreshCw,
   Layout, ListChecks, CheckSquare, AlignLeft, Eye, HelpCircle, ArrowLeft
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, triggerHaptic } from '@/src/lib/utils';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebaseClient';
 import { collection, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
 import BackButton from '../components/layout/BackButton';
@@ -214,6 +214,7 @@ export default function QuizSystem() {
   }, [mode, timeLeft]);
 
   const selectQuizAndConfirm = (quiz: QuizItem) => {
+    triggerHaptic('light');
     setActiveQuiz(quiz);
     setAnswers({});
     setCurrentQIndex(0);
@@ -223,12 +224,14 @@ export default function QuizSystem() {
   };
 
   const startQuizPlay = () => {
+    triggerHaptic('medium');
     setAnswers({});
     setCurrentQIndex(0);
     setMode('quiz');
   };
 
   const handleAnswerInput = (qIdx: number, val: any) => {
+    triggerHaptic('light');
     setAnswers(prev => ({
       ...prev,
       [qIdx]: val
@@ -236,6 +239,7 @@ export default function QuizSystem() {
   };
 
   const handleCheckboxToggle = (qIdx: number, oIdx: number) => {
+    triggerHaptic('light');
     const currentList: number[] = Array.isArray(answers[qIdx]) ? answers[qIdx] : [];
     let updated: number[];
     if (currentList.includes(oIdx)) {
@@ -332,6 +336,7 @@ export default function QuizSystem() {
 
     setMode('result');
     setScoreSubmitting(false);
+    triggerHaptic('success');
 
     // Execute absolute Auto Print trigger
     setTimeout(() => {

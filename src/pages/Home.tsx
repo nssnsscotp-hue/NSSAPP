@@ -1035,7 +1035,7 @@ export default function Home() {
                             card.color
                           )}>
                             <Icon size={21} />
-                          </div>Object
+                          </div>
 
                           <div className="space-y-1.5 mt-6 relative z-0">
                             <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-indigo-600 transition-colors leading-tight">

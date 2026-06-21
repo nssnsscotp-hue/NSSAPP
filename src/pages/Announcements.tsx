@@ -91,9 +91,23 @@ export default function Announcements() {
 
         <div className="space-y-6">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <Loader2 size={48} className="animate-spin text-blue-600" />
-              <p className="text-slate-400 animate-pulse font-medium">Fetching updates...</p>
+            <div className="space-y-6">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 animate-pulse space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="h-7 w-2/3 bg-slate-250/70 rounded-lg"></div>
+                    <div className="h-6 w-24 bg-slate-100 rounded-full"></div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="h-4 w-full bg-slate-200/80 rounded"></div>
+                    <div className="h-4 w-5/6 bg-slate-200/80 rounded"></div>
+                    <div className="h-4 w-1/2 bg-slate-200/80 rounded"></div>
+                  </div>
+                  <div className="flex items-center gap-4 pt-2">
+                    <div className="h-12 w-32 bg-slate-200/80 rounded-xl"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : announcements.length > 0 ? (
             <AnimatePresence>

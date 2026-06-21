@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { MapPin, User, CheckCircle2, AlertCircle, Loader2, ChevronRight, QrCode, Camera } from 'lucide-react';
 import { GAS_URLS } from '@/src/lib/constants';
 import { Program } from '@/src/pages/types';
-import { cn, getQrSecurityKey } from '@/src/lib/utils';
+import { cn, getQrSecurityKey, triggerHaptic } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 import BackButton from '../components/layout/BackButton';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -139,11 +139,13 @@ export default function Attendance() {
   const executeAttendanceMarking = async (selectedProgramId: string, inputCodeOrQrKey: string, isQrMethod: boolean = false) => {
     if (!selectedProgramId || !userProfile || !inputCodeOrQrKey) {
       setStatus({ type: 'error', msg: 'Missing program selection or validated security details.' });
+      triggerHaptic('error');
       return;
     }
 
     setLoading(true);
     setStatus({ type: 'info', msg: 'Verifying relative secure position... Retrieving GPS lock...' });
+    triggerHaptic('light');
 
     let latitude: number | null = null;
     let longitude: number | null = null;
@@ -175,6 +177,7 @@ export default function Attendance() {
     } catch (geoError: any) {
       console.error("GPS Verification Error:", geoError);
       setStatus({ type: 'error', msg: geoError.message || "Failed to retrieve precise GPS location. Geolocation access is mandatory for securing this Attendance Portal." });
+      triggerHaptic('error');
       setLoading(false);
       return;
     }
@@ -189,12 +192,14 @@ export default function Attendance() {
       
       if (!targetProgram) {
         setStatus({ type: 'error', msg: 'The scanned or selected program key is invalid.' });
+        triggerHaptic('error');
         setLoading(false);
         return;
       }
 
       if (targetProgram.Status !== 'Active') {
         setStatus({ type: 'error', msg: 'Attendance portal for this program is now CLOSED.' });
+        triggerHaptic('error');
         setLoading(false);
         return;
       }
@@ -203,12 +208,14 @@ export default function Attendance() {
         const expectedQrKey = getQrSecurityKey(targetProgram.ProgramID, targetProgram.ProgramName, targetProgram.Code);
         if (expectedQrKey !== inputCodeOrQrKey) {
           setStatus({ type: 'error', msg: 'Cryptographic signature mismatch! The scanned QR code has expired or is invalid for this program.' });
+          triggerHaptic('error');
           setLoading(false);
           return;
         }
       } else {
         if (targetProgram.Code !== inputCodeOrQrKey) {
           setStatus({ type: 'error', msg: 'Incorrect security code. Please check with your supervisor.' });
+          triggerHaptic('error');
           setLoading(false);
           return;
         }
@@ -216,28 +223,29 @@ export default function Attendance() {
 
       // 3. Mark Attendance (Check duplicate)
       const { data: existing } = await supabase
-        .from('marked_attendance')
-        .select('*')
-        .eq('volunteer_name', userProfile.full_name)
-        .eq('unit', userProfile.unit)
-        .eq('event_name', targetProgram.ProgramName)
-        .maybeSingle();
+          .from('marked_attendance')
+          .select('*')
+          .eq('volunteer_name', userProfile.full_name)
+          .eq('unit', userProfile.unit)
+          .eq('event_name', targetProgram.ProgramName)
+          .maybeSingle();
 
       if (existing) {
         setStatus({ type: 'error', msg: 'Attendance is already logged for this program session!' });
+        triggerHaptic('error');
         setLoading(false);
         return;
       }
 
       const { error } = await supabase
-        .from('marked_attendance')
-        .insert([{
-          volunteer_name: userProfile.full_name,
-          unit: userProfile.unit,
-          event_name: targetProgram.ProgramName,
-          latitude,
-          longitude
-        }]);
+          .from('marked_attendance')
+          .insert([{
+            volunteer_name: userProfile.full_name,
+            unit: userProfile.unit,
+            event_name: targetProgram.ProgramName,
+            latitude,
+            longitude
+          }]);
 
       if (error) {
         console.error("Attendance Insert Error:", error);
@@ -262,10 +270,12 @@ export default function Attendance() {
         type: 'success', 
         msg: `Attendance marked successfully! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}. You earned +100 Master Points. ✅` 
       });
+      triggerHaptic('success');
       setAttendanceCode('');
     } catch (err: any) {
       console.error(err);
       setStatus({ type: 'error', msg: err.message || 'Submission failed. Please check your connection and try again.' });
+      triggerHaptic('error');
     } finally {
       setLoading(false);
     }
@@ -273,6 +283,7 @@ export default function Attendance() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    triggerHaptic('medium');
     if (markMethod === 'qr' && scannedQrKey) {
       await executeAttendanceMarking(programID, scannedQrKey, true);
     } else {
@@ -304,6 +315,7 @@ export default function Attendance() {
             },
             async (decodedText) => {
               console.log("Portal Scanned payload:", decodedText);
+              triggerHaptic('success');
               
               // Stop camera immediately to release locks
               try {
@@ -391,8 +403,10 @@ export default function Attendance() {
 
   const handleCheckStatus = async (e: React.FormEvent) => {
     e.preventDefault();
+    triggerHaptic('medium');
     if (!userProfile || !checkProgramID) {
       setCheckStatus({ type: 'error', msg: 'Please select a Program' });
+      triggerHaptic('error');
       return;
     }
 
@@ -410,11 +424,14 @@ export default function Attendance() {
 
       if (att) {
         setCheckStatus({ type: 'success', msg: `Attendance verified! Record found for ${userProfile.full_name}.` });
+        triggerHaptic('success');
       } else {
         setCheckStatus({ type: 'info', msg: `No record found for ${userProfile.full_name} in this program.` });
+        triggerHaptic('light');
       }
     } catch (err) {
       setCheckStatus({ type: 'error', msg: 'Failed to verify status.' });
+      triggerHaptic('error');
     } finally {
       setLoading(false);
     }
@@ -440,6 +457,7 @@ export default function Attendance() {
               onClick={() => {
                 setActiveTab('mark');
                 setStatus(null);
+                triggerHaptic('light');
               }}
               className={cn(
                 "flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors",
@@ -452,6 +470,7 @@ export default function Attendance() {
               onClick={() => {
                 setActiveTab('history');
                 setCheckStatus(null);
+                triggerHaptic('light');
               }}
               className={cn(
                 "flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-colors",
@@ -485,9 +504,16 @@ export default function Attendance() {
                 <button onClick={() => window.location.href = '/login'} className="mt-2 text-xs font-black uppercase text-blue-600 underline">Switch to Login</button>
               </div>
             ) : (
-              <div className="mb-6 p-6 bg-slate-50 rounded-2xl flex items-center gap-3 text-slate-400 italic text-sm animate-pulse">
-                <Loader2 size={18} className="animate-spin" />
-                Validating identity...
+              <div className="mb-8 p-6 bg-white border border-slate-100 rounded-3xl flex items-center justify-between animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl"></div>
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-32 bg-slate-200 rounded"></div>
+                    <div className="h-4.5 w-44 bg-slate-200/90 rounded"></div>
+                    <div className="h-3 w-20 bg-slate-100 rounded"></div>
+                  </div>
+                </div>
+                <div className="w-16 h-6 bg-slate-100 rounded-full"></div>
               </div>
             )}
 
@@ -498,7 +524,7 @@ export default function Attendance() {
                   <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl">
                     <button
                       type="button"
-                      onClick={() => { setMarkMethod('code'); setStatus(null); }}
+                      onClick={() => { setMarkMethod('code'); setStatus(null); triggerHaptic('light'); }}
                       className={cn(
                         "py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2",
                         markMethod === 'code' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
@@ -509,7 +535,7 @@ export default function Attendance() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setMarkMethod('qr'); setStatus(null); }}
+                      onClick={() => { setMarkMethod('qr'); setStatus(null); triggerHaptic('light'); }}
                       className={cn(
                         "py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2",
                         markMethod === 'qr' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"

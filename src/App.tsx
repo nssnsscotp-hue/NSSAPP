@@ -44,6 +44,29 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('');
 
+  // Global Theme Sync Effect
+  useEffect(() => {
+    const syncTheme = () => {
+      const currentTheme = localStorage.getItem('nss_theme') || 'light';
+      const root = document.documentElement;
+      if (currentTheme === 'dark') {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+    
+    syncTheme();
+    
+    window.addEventListener('storage', syncTheme);
+    window.addEventListener('nss_theme_updated', syncTheme);
+    
+    return () => {
+      window.removeEventListener('storage', syncTheme);
+      window.removeEventListener('nss_theme_updated', syncTheme);
+    };
+  }, []);
+
   useEffect(() => {
     if (localStorage.getItem("justLoggedIn") === "true") {
       const userVal = localStorage.getItem("user") || "Volunteer";
@@ -166,65 +189,80 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+import PageTransition from './components/layout/PageTransition';
+
+// Helper component to add transition animations to route elements
+function AnimateRoute({ element }: { element: React.ReactNode }) {
+  const location = useLocation();
+  const isSecondary = location.pathname !== '/';
+  return <PageTransition slideUp={isSecondary}>{element}</PageTransition>;
+}
+
+function AnimatedRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<AnimateRoute element={<Login />} />} />
+        
+        {/* Publicly Accessible Routes */}
+        <Route path="/" element={<AnimateRoute element={<Home />} />} />
+        <Route path="/announcements" element={<AnimateRoute element={<Announcements />} />} />
+        <Route path="/gallery" element={<AnimateRoute element={<Gallery />} />} />
+        <Route path="/help" element={<AnimateRoute element={<Help />} />} />
+        <Route path="/about" element={<AnimateRoute element={<About />} />} />
+        <Route path="/drug-report" element={<AnimateRoute element={<DrugReport />} />} />
+        <Route path="/emergency" element={<AnimateRoute element={<Emergency />} />} />
+        
+        <Route element={<ProtectedRoute />}>
+          {/* Protected Volunteer Routes */}
+          <Route path="/attendance" element={<AnimateRoute element={<Attendance />} />} />
+          <Route path="/sos" element={<AnimateRoute element={<SOS />} />} />
+          <Route path="/bloodbank" element={<AnimateRoute element={<BloodBank />} />} />
+          <Route path="/complaints" element={<AnimateRoute element={<Complaints />} />} />
+          <Route path="/quiz" element={<AnimateRoute element={<QuizSystem />} />} />
+          <Route path="/reports" element={<AnimateRoute element={<Reports />} />} />
+          <Route path="/calendar" element={<AnimateRoute element={<CalendarPage />} />} />
+          <Route path="/leaderboard" element={<AnimateRoute element={<Leaderboard />} />} />
+          <Route path="/id-card" element={<AnimateRoute element={<VolunteerID />} />} />
+          <Route path="/profile" element={<AnimateRoute element={<Profile />} />} />
+          <Route path="/performance" element={<AnimateRoute element={<PerformanceDashboard />} />} />
+          <Route path="/resources" element={<AnimateRoute element={<Resources />} />} />
+          <Route path="/home-arrival" element={<AnimateRoute element={<HomeArrival />} />} />
+          <Route path="/alumni" element={<AnimateRoute element={<AlumniNetwork />} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute role="admin" />}>
+          <Route path="/admin" element={<AnimateRoute element={<AdminDashboard />} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute role="hod" />}>
+          <Route path="/hod" element={<AnimateRoute element={<HODDashboard />} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute role="principal" />}>
+          <Route path="/principal" element={<AnimateRoute element={<PrincipalDashboard />} />} />
+        </Route>
+
+        {/* Catch-all route to handle 404s/mismatches */}
+        <Route path="*" element={
+          <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+            <div className="text-center">
+              <h1 className="text-4xl font-black text-slate-900 mb-4">404</h1>
+              <p className="text-slate-500 mb-8 uppercase tracking-widest font-bold">Route Not Found</p>
+              <Link to="/" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">
+                Go Home
+              </Link>
+            </div>
+          </div>
+        } />
+      </Routes>
+  );
+}
+
 export default function App() {
   return (
     <HashRouter>
       <Layout>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          
-          {/* Publicly Accessible Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/announcements" element={<Announcements />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/drug-report" element={<DrugReport />} />
-          <Route path="/emergency" element={<Emergency />} />
-          
-          <Route element={<ProtectedRoute />}>
-            {/* Protected Volunteer Routes */}
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/sos" element={<SOS />} />
-            <Route path="/bloodbank" element={<BloodBank />} />
-            <Route path="/complaints" element={<Complaints />} />
-            <Route path="/quiz" element={<QuizSystem />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/id-card" element={<VolunteerID />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/performance" element={<PerformanceDashboard />} />
-            <Route path="/resources" element={<Resources />} />
-            <Route path="/home-arrival" element={<HomeArrival />} />
-            <Route path="/alumni" element={<AlumniNetwork />} />
-          </Route>
-
-          <Route element={<ProtectedRoute role="admin" />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Route>
-
-          <Route element={<ProtectedRoute role="hod" />}>
-            <Route path="/hod" element={<HODDashboard />} />
-          </Route>
-
-          <Route element={<ProtectedRoute role="principal" />}>
-            <Route path="/principal" element={<PrincipalDashboard />} />
-          </Route>
-
-          {/* Catch-all route to handle 404s/mismatches */}
-          <Route path="*" element={
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-              <div className="text-center">
-                <h1 className="text-4xl font-black text-slate-900 mb-4">404</h1>
-                <p className="text-slate-500 mb-8 uppercase tracking-widest font-bold">Route Not Found</p>
-                <Link to="/" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">
-                  Go Home
-                </Link>
-              </div>
-            </div>
-          } />
-        </Routes>
+        <AnimatedRoutes />
       </Layout>
     </HashRouter>
   );

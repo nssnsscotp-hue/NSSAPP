@@ -5,6 +5,32 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function triggerHaptic(type: 'light' | 'medium' | 'heavy' | 'success' | 'error' = 'light') {
+  if (typeof window !== 'undefined' && window.navigator && typeof window.navigator.vibrate === 'function') {
+    try {
+      switch (type) {
+        case 'light':
+          window.navigator.vibrate(15);
+          break;
+        case 'medium':
+          window.navigator.vibrate(30);
+          break;
+        case 'heavy':
+          window.navigator.vibrate(60);
+          break;
+        case 'success':
+          window.navigator.vibrate([40, 40, 40]);
+          break;
+        case 'error':
+          window.navigator.vibrate([80, 50, 120]);
+          break;
+      }
+    } catch {
+      // Ignore vibration errors under locked/unpermitted environments
+    }
+  }
+}
+
 export function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-IN', {
     day: 'numeric',

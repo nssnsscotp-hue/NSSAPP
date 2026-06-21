@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, Phone, MapPin, MessageSquare, AlertTriangle, Volume2, ShieldCheck, Activity, ChevronRight, RefreshCw } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, triggerHaptic } from '@/src/lib/utils';
 import BackButton from '../components/layout/BackButton';
 
 export default function SOS() {
@@ -18,10 +18,23 @@ export default function SOS() {
   ];
 
   const handleSOSCall = () => {
+    triggerHaptic('heavy');
+    // Crisis sequence to confirm the action on the hardware layer
+    if (typeof window !== 'undefined' && window.navigator && typeof window.navigator.vibrate === 'function') {
+      try {
+        window.navigator.vibrate([200, 100, 200, 100, 300]);
+      } catch (e) {}
+    }
     window.location.href = "tel:112";
   };
 
   const playAlarm = () => {
+    triggerHaptic('heavy');
+    if (typeof window !== 'undefined' && window.navigator && typeof window.navigator.vibrate === 'function') {
+      try {
+        window.navigator.vibrate([500, 250, 500, 250, 500]);
+      } catch (e) {}
+    }
     const audio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
     audio.play();
     setPlaying(true);
@@ -30,8 +43,10 @@ export default function SOS() {
 
   const loadCoordinates = () => {
     setGpsLoading(true);
+    triggerHaptic('light');
     if (!navigator.geolocation) {
       setGpsError('Geolocation not supported');
+      triggerHaptic('error');
       // Fallback coordinates (NSS College Ottapalam, Kerala, India)
       setCoords({ lat: 10.7867, lon: 76.2694 });
       setGpsLoading(false);
@@ -43,12 +58,14 @@ export default function SOS() {
         setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
         setGpsError(null);
         setGpsLoading(false);
+        triggerHaptic('success');
       },
       (err) => {
         // Fallback coordinates (NSS College Ottapalam default)
         setCoords({ lat: 10.7867, lon: 76.2694 });
         setGpsError('Satellite blocked (using default campus coordinates)');
         setGpsLoading(false);
+        triggerHaptic('error');
       },
       { enableHighAccuracy: true, timeout: 6000 }
     );
@@ -160,6 +177,7 @@ export default function SOS() {
           <div className="grid grid-cols-2 gap-3">
             <a 
               href={getWhatsAppLink()}
+              onClick={() => triggerHaptic('medium')}
               target="_blank"
               rel="noopener noreferrer"
               className="h-20 bg-green-500 hover:bg-green-600 text-white rounded-[1.8rem] flex flex-col items-center justify-center gap-1.5 font-black text-[9.5px] uppercase tracking-widest shadow-md shadow-green-500/10 transition-all cursor-pointer hover:translate-y-[-2px] active:scale-95 text-center leading-none"
@@ -169,6 +187,7 @@ export default function SOS() {
             </a>
             <a 
               href={getSMSLink()}
+              onClick={() => triggerHaptic('medium')}
               className="h-20 bg-slate-900 hover:bg-slate-850 text-white rounded-[1.8rem] flex flex-col items-center justify-center gap-1.5 font-black text-[9.5px] uppercase tracking-widest shadow-md shadow-slate-950/10 transition-all cursor-pointer hover:translate-y-[-2px] active:scale-95 text-center leading-none"
             >
               <MessageSquare size={16} />
@@ -222,6 +241,7 @@ export default function SOS() {
               <a 
                 key={contact.name}
                 href={`tel:${contact.number}`}
+                onClick={() => triggerHaptic('heavy')}
                 className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-red-200 hover:bg-red-50/25 transition-all duration-300 group cursor-pointer shadow-xs"
               >
                 <div className="flex items-center gap-3">

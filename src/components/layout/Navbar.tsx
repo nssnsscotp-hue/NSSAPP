@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, LogOut, LogIn, Home, Bell, User, ShieldAlert, Heart, MessageSquare, Image, HelpCircle, Trophy, Contact, BarChart3, Library, GraduationCap, Calendar, Info } from 'lucide-react';
+import { Menu, X, LogOut, LogIn, Home, Bell, User, ShieldAlert, Heart, MessageSquare, Image, HelpCircle, Trophy, Contact, BarChart3, Library, GraduationCap, Calendar, Info, Sun, Moon } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 
@@ -13,6 +13,21 @@ export default function Navbar() {
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin';
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('nss_theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('nss_theme', theme);
+    window.dispatchEvent(new Event('nss_theme_updated'));
+  }, [theme]);
 
   useEffect(() => {
     const updateCount = () => {
@@ -143,8 +158,8 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2 sm:gap-4 group">
               <div className="flex items-center -space-x-3.5 sm:-space-x-4 transition-transform group-hover:scale-105 duration-500">
-                <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 p-1 md:p-1.5 z-20">
-                  <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="College Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white dark:bg-slate-950 rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 dark:border-slate-850 p-1 md:p-1.5 z-20">
+                  <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="College Logo" className="w-full h-full object-contain dark:brightness-0 dark:invert" referrerPolicy="no-referrer" />
                 </div>
                 <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 p-1 md:p-1.5 z-10">
                   <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" alt="NSS Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
@@ -201,6 +216,24 @@ export default function Navbar() {
                   )}
                 </Link>
               </motion.div>
+
+              <div className="w-px h-8 bg-slate-200 mx-1" />
+
+              {/* High-Contrast Theme Switcher */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 border shadow-md relative",
+                  theme === 'dark'
+                    ? "bg-slate-800 text-yellow-400 border-slate-700 hover:bg-slate-700"
+                    : "bg-slate-100/90 text-slate-700 border-slate-200/40 hover:bg-slate-200 hover:text-brand-600/90"
+                )}
+                title={theme === 'dark' ? "Switch to Light Theme" : "Switch to High-Contrast Theme"}
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </motion.button>
 
               <div className="w-px h-8 bg-slate-200 mx-1" />
 
@@ -275,7 +308,21 @@ export default function Navbar() {
                   </Link>
                 ))}
               </div>
-              <div className="p-1 mt-1 border-t border-slate-100/50">
+               <div className="p-1 mt-1 border-t border-slate-100/50 space-y-1">
+                {/* Mobile Theme Toggle Button */}
+                <button
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                  className="w-full flex items-center justify-between p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {theme === 'dark' ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-slate-500" />}
+                    <span>Theme: {theme === 'dark' ? 'High-Contrast' : 'Light'}</span>
+                  </div>
+                  <span className="text-[9px] px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-full font-black tracking-widest">
+                    TOGGLE
+                  </span>
+                </button>
+
                 {isLoggedIn ? (
                   <button
                     onClick={handleLogout}

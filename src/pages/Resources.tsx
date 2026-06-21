@@ -152,8 +152,10 @@ export default function Resources() {
   });
 
   const [localResources, setLocalResources] = useState<ResourceFile[]>([]);
+  const [loadingResources, setLoadingResources] = useState(true);
 
   const fetchResourcesList = async () => {
+    setLoadingResources(true);
     try {
       // Fetch permanent items stored in Supabase reports_log
       const { data: dbFiles, error } = await supabase
@@ -186,6 +188,7 @@ export default function Resources() {
         // Order descending by numerical ID
         parsed.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
         setLocalResources(parsed);
+        setLoadingResources(false);
         return;
       }
     } catch (err) {
@@ -203,6 +206,7 @@ export default function Resources() {
             downloadUrl: `/api/resources/download/${f.id}`
           }));
           setLocalResources(formatted);
+          setLoadingResources(false);
           return;
         }
       }
@@ -218,6 +222,8 @@ export default function Resources() {
       }
     } catch (e) {
       console.error("Failed to load local cached files:", e);
+    } finally {
+      setLoadingResources(false);
     }
   };
 
@@ -835,7 +841,25 @@ export default function Resources() {
               {/* Files feed / list */}
               <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
                 <AnimatePresence initial={false}>
-                  {filteredResources.length === 0 ? (
+                  {loadingResources ? (
+                    <div className="space-y-2.5">
+                      {[1, 2, 3, 4].map((n) => (
+                        <div key={n} className="p-4 rounded-2xl flex flex-col sm:flex-row bg-white border border-slate-100 items-start sm:items-center justify-between gap-3 animate-pulse relative overflow-hidden">
+                          <div className="flex items-center gap-3 w-full">
+                            <div className="w-10 h-10 bg-slate-100 rounded-xl shrink-0"></div>
+                            <div className="space-y-2 flex-1">
+                              <div className="h-4 w-1/2 bg-slate-200 rounded"></div>
+                              <div className="h-3.5 w-3/4 bg-slate-100 rounded"></div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                            <div className="h-4 w-12 bg-slate-100 rounded"></div>
+                            <div className="w-8 h-8 rounded-lg bg-slate-100"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : filteredResources.length === 0 ? (
                     <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}

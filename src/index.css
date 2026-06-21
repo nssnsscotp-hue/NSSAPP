@@ -373,3 +373,122 @@
     animation: morph 8s ease-in-out infinite;
   }
 }
+
+/* High-Contrast Dark Theme Global Overrides */
+html.dark,
+:root.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Base page backgrounds & panels */
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-slate-100\/90,
+.dark .bg-slate-50\/50,
+.dark .bg-gray-50,
+.dark .bg-gray-100,
+.dark .bg-slate-200\/10,
+.dark .bg-brand-50,
+.dark .bg-indigo-50,
+.dark .bg-blue-50\/50,
+.dark .bg-slate-50\/80 {
+  background-color: #030303 !important;
+}
+
+/* Glass, Card features & custom panels */
+.dark .bg-white,
+.dark .pro-card,
+.dark .cyber-card,
+.dark .glass-premium,
+.dark .bg-white\/95,
+.dark .bg-white\/80,
+.dark .bg-white\/90,
+.dark .glass,
+.dark div[class*="bg-white"],
+.dark section[class*="bg-white"] {
+  background-color: #0a0a0a !important;
+  color: #ffffff !important;
+  border-color: #222222 !important;
+}
+
+/* Border styling overrides */
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-200\/40,
+.dark .border-slate-300,
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-indigo-100,
+.dark .border-indigo-200,
+.dark .border-blue-100 {
+  border-color: #222222 !important;
+}
+
+/* Heading and core body texts */
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-slate-950,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-slate-900\/80 {
+  color: #ffffff !important;
+}
+
+/* Muted or secondary text labels */
+.dark .text-slate-500,
+.dark .text-slate-400,
+.dark .text-slate-300,
+.dark .text-gray-500,
+.dark .text-gray-400,
+.dark .text-gray-300 {
+  color: #a3a3a3 !important;
+}
+
+/* High contrast inputs and selectors */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+  border-color: #333333 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #666666 !important;
+}
+
+/* Table and divider rows */
+.dark .divide-y > * + * {
+  border-color: #222222 !important;
+}
+
+/* Secondary statistics and info cards */
+.dark .bg-slate-50\/40,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-100\/50,
+.dark .bg-slate-100\/80 {
+  background-color: #141414 !important;
+  border-color: #222222 !important;
+}
+
+/* Overriding light navigation background hovers */
+.dark .hover\:bg-brand-50:hover {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+  color: #ffffff !important;
+}
+
+/* Adjust primary brand text for high contrast readability */
+.dark .text-brand-600,
+.dark .text-brand-500,
+.dark .text-brand-700 {
+  color: #818cf8 !important;
+}
