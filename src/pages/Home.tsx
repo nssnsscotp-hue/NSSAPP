@@ -14,6 +14,7 @@ import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 import { collection, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/src/lib/firebaseClient';
+import HomeCountdown from '../components/HomeCountdown';
 
 export default function Home() {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -23,6 +24,19 @@ export default function Home() {
   const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null);
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(null);
   const [mobileFeedTab, setMobileFeedTab] = useState<'diaries' | 'notices'>('diaries');
+  
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('nss_theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setTheme((localStorage.getItem('nss_theme') as 'light' | 'dark') || 'light');
+    };
+    window.addEventListener('nss_theme_updated', handleThemeChange);
+    handleThemeChange();
+    return () => window.removeEventListener('nss_theme_updated', handleThemeChange);
+  }, []);
   
   // Custom states for admin activity gallery widget
   const [galleryImages, setGalleryImages] = useState<any[]>([]);
@@ -64,7 +78,13 @@ export default function Home() {
       heroImage: "https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg",
       tickerText: "Welcome to NSS College Ottapalam NSS Portal. NSS Program Units 36 & 94 welcome all volunteers and dynamic change-makers! Join us in our journey of youth leadership, blood donations, environmental restorations, and community welfare.",
       collegeName: "NSS College, Ottapalam",
-      unitsText: "Programme Units 36 & 94"
+      unitsText: "Programme Units 36 & 94",
+      countdownActive: false,
+      countdownTitle: "Upcoming NSS Scheduled Camp Setup",
+      countdownTarget: "2026-07-10T10:00:00",
+      countdownDescription: "Preparations and distribution rosters for the upcoming 7-day special village adoption camp.",
+      countdownLocation: "College Seminar Hall",
+      countdownEventLink: ""
     };
   });
 
@@ -336,7 +356,13 @@ export default function Home() {
             heroImage: val.heroImage || "https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg",
             tickerText: val.tickerText || "Welcome to NSS College Ottapalam NSS Portal. NSS Program Units 36 & 94 welcome all volunteers and dynamic change-makers! Join us in our journey of youth leadership, blood donations, environmental restorations, and community welfare.",
             collegeName: val.collegeName || "NSS College, Ottapalam",
-            unitsText: val.unitsText || "Programme Units 36 & 94"
+            unitsText: val.unitsText || "Programme Units 36 & 94",
+            countdownActive: val.countdownActive !== undefined ? val.countdownActive : false,
+            countdownTitle: val.countdownTitle || "",
+            countdownTarget: val.countdownTarget || "",
+            countdownDescription: val.countdownDescription || "",
+            countdownLocation: val.countdownLocation || "",
+            countdownEventLink: val.countdownEventLink || ""
           };
           setWebConfig(loaded);
           localStorage.setItem('website_config_settings', JSON.stringify(loaded));
@@ -534,6 +560,7 @@ export default function Home() {
                 src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" 
                 alt="NSS College Ottapalam Emblem" 
                 className="w-full h-full object-contain animate-fade-in" 
+                style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
                 referrerPolicy="no-referrer" 
               />
             </div>
@@ -611,6 +638,19 @@ export default function Home() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14 space-y-20 relative">
+        <AnimatePresence mode="wait">
+          {webConfig.countdownActive && (
+            <HomeCountdown
+              active={webConfig.countdownActive}
+              title={webConfig.countdownTitle}
+              targetDate={webConfig.countdownTarget}
+              description={webConfig.countdownDescription}
+              location={webConfig.countdownLocation}
+              eventLink={webConfig.countdownEventLink}
+            />
+          )}
+        </AnimatePresence>
+
         {/* SVG DEF FOR FLUID HIGH-FIDELITY INDIAN FLAG WAVE FILTER */}
         <svg className="absolute w-0 h-0 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -1646,12 +1686,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex justify-center items-center">
-                  <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 transition-colors px-3 py-1 rounded-full border border-slate-100">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-[9px] font-mono font-black uppercase text-slate-600 tracking-wider">Verified Council Core</span>
-                  </div>
-                </div>
+
               </motion.div>
             ))}
           </div>
@@ -1789,7 +1824,13 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-white/5 pb-10">
             <div className="flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
               <div className="w-14 h-14 bg-white p-1.5 rounded-2xl shadow-xl shrink-0">
-                <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="NSS College Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                <img 
+                  src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" 
+                  alt="NSS College Logo" 
+                  className="w-full h-full object-contain" 
+                  style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                  referrerPolicy="no-referrer" 
+                />
               </div>
               <div className="space-y-1">
                 <h4 className="text-white font-black text-sm uppercase tracking-wider leading-none">NSS College Ottapalam</h4>

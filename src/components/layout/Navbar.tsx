@@ -159,7 +159,13 @@ export default function Navbar() {
             <Link to="/" className="flex items-center gap-2 sm:gap-4 group">
               <div className="flex items-center -space-x-3.5 sm:-space-x-4 transition-transform group-hover:scale-105 duration-500">
                 <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white dark:bg-slate-950 rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 dark:border-slate-850 p-1 md:p-1.5 z-20">
-                  <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="College Logo" className="w-full h-full object-contain dark:brightness-0 dark:invert" referrerPolicy="no-referrer" />
+                  <img 
+                    src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" 
+                    alt="College Logo" 
+                    className="w-full h-full object-contain" 
+                    style={{ filter: theme === 'dark' ? 'invert(1)' : 'none' }}
+                    referrerPolicy="no-referrer" 
+                  />
                 </div>
                 <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 p-1 md:p-1.5 z-10">
                   <img src="https://i.postimg.cc/Xq7KPnqK/pngkey-com-allu-arjun-png-2479287.png" alt="NSS Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />

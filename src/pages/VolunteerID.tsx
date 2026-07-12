@@ -145,9 +145,9 @@ export default function VolunteerID() {
                 {/* Header info */}
                 <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 bg-white p-1 rounded-xl">
+                    <span className="block w-10 h-10 bg-white p-1 rounded-xl">
                       <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                    </div>
+                    </span>
                     <div>
                       <h4 className="text-[10.5px] font-black text-white uppercase italic tracking-tight leading-none">NSS College Ottapalam</h4>
                       <p className="text-indigo-400 text-[8px] font-black uppercase tracking-widest mt-1">Units 36 & 94</p>
@@ -239,9 +239,9 @@ export default function VolunteerID() {
                 {/* ID Card Top Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 bg-white p-1 rounded-xl shadow-lg">
+                    <span className="block w-12 h-12 bg-white p-1 rounded-xl shadow-lg">
                       <img src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" alt="University Crest" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                    </div>
+                    </span>
                     <div className="text-left">
                       <h2 className="text-sm font-black text-white uppercase italic tracking-tighter leading-none leading-tight">NSS COLLEGE OTTAPALAM</h2>
                       <p className="text-indigo-400 text-[9px] font-black uppercase tracking-widest mt-1">NATIONAL SERVICE SCHEME | UNITS 36 & 94</p>
@@ -347,7 +347,6 @@ export default function VolunteerID() {
             <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 italic">
               <Award className="text-amber-500 animate-pulse" /> Verified Digital Achievements
             </h3>
-            <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-widest">State Council verified</span>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">

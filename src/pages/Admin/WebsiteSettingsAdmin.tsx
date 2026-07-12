@@ -33,6 +33,12 @@ interface WebsiteConfig {
   tickerText: string;
   collegeName: string;
   unitsText: string;
+  countdownActive?: boolean;
+  countdownTitle?: string;
+  countdownTarget?: string;
+  countdownDescription?: string;
+  countdownLocation?: string;
+  countdownEventLink?: string;
 }
 
 const DEFAULT_SETTINGS: WebsiteConfig = {
@@ -60,7 +66,13 @@ const DEFAULT_SETTINGS: WebsiteConfig = {
   heroImage: "https://i.ibb.co/3yvNCYQ6/sl-1-1.jpg",
   tickerText: "Welcome to NSS College Ottapalam NSS Portal. NSS Program Units 36 & 94 welcome all volunteers and dynamic change-makers! Join us in our journey of youth leadership, blood donations, environmental restorations, and community welfare.",
   collegeName: "NSS College, Ottapalam",
-  unitsText: "Programme Units 36 & 94"
+  unitsText: "Programme Units 36 & 94",
+  countdownActive: false,
+  countdownTitle: "Upcoming NSS Scheduled Camp Setup",
+  countdownTarget: "2026-07-10T10:00:00",
+  countdownDescription: "Preparations and distribution rosters for the upcoming 7-day special village adoption camp.",
+  countdownLocation: "College Seminar Hall",
+  countdownEventLink: ""
 };
 
 export default function WebsiteSettingsAdmin() {
@@ -111,7 +123,13 @@ export default function WebsiteSettingsAdmin() {
           heroImage: dbData.heroImage || DEFAULT_SETTINGS.heroImage,
           tickerText: dbData.tickerText || DEFAULT_SETTINGS.tickerText,
           collegeName: dbData.collegeName || DEFAULT_SETTINGS.collegeName,
-          unitsText: dbData.unitsText || DEFAULT_SETTINGS.unitsText
+          unitsText: dbData.unitsText || DEFAULT_SETTINGS.unitsText,
+          countdownActive: dbData.countdownActive !== undefined ? dbData.countdownActive : DEFAULT_SETTINGS.countdownActive,
+          countdownTitle: dbData.countdownTitle !== undefined ? dbData.countdownTitle : DEFAULT_SETTINGS.countdownTitle,
+          countdownTarget: dbData.countdownTarget !== undefined ? dbData.countdownTarget : DEFAULT_SETTINGS.countdownTarget,
+          countdownDescription: dbData.countdownDescription !== undefined ? dbData.countdownDescription : DEFAULT_SETTINGS.countdownDescription,
+          countdownLocation: dbData.countdownLocation !== undefined ? dbData.countdownLocation : DEFAULT_SETTINGS.countdownLocation,
+          countdownEventLink: dbData.countdownEventLink !== undefined ? dbData.countdownEventLink : DEFAULT_SETTINGS.countdownEventLink
         };
         setConfig(merged);
         localStorage.setItem('website_config_settings', JSON.stringify(merged));
@@ -676,6 +694,102 @@ export default function WebsiteSettingsAdmin() {
                   <p className="text-[10px] text-red-500 font-bold mt-1">{uploadState.heroImage.error}</p>
                 )}
               </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* SECTION 3: NSS General Countdown Timer Settings */}
+        <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6 sm:p-8 space-y-8">
+          <div>
+            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+              <RefreshCw className="text-indigo-600 animate-[spin_10s_linear_infinite]" size={18} />
+              3. NSS General Countdown Timer Settings
+            </h3>
+            <p className="text-slate-400 text-xs mt-1">
+              Enable an interactive real-time countdown banner on the homescreen volunteer dashboard for important upcoming camps, meetings, or training sessions.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Countdown Active Status Toggle */}
+            <div className="space-y-4 md:col-span-2 bg-slate-50 p-6 rounded-3xl border border-slate-200/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Display Countdown Timer Banner</h4>
+                <p className="text-[10px] text-slate-400">Specify whether the active timer should be rendered on the volunteer dashboard.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={!!config.countdownActive} 
+                  onChange={(e) => setConfig(prev => ({ ...prev, countdownActive: e.target.checked }))}
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                <span className="ml-3 text-xs font-black uppercase tracking-widest text-slate-600">
+                  {config.countdownActive ? "ACTIVE ON HOME PORTAL" : "DISABLED"}
+                </span>
+              </label>
+            </div>
+
+            {/* Countdown Event Title */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Scheduled Event / Meeting Title</label>
+              <input 
+                type="text"
+                value={config.countdownTitle || ''}
+                onChange={(e) => setConfig(prev => ({ ...prev, countdownTitle: e.target.value }))}
+                placeholder="e.g., General Executive Committee Meeting"
+                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 outline-none focus:ring-1 focus:ring-blue-600 text-xs font-extrabold text-slate-700"
+              />
+            </div>
+
+            {/* Countdown Target Date/Time */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Target Date & Time (Local / Indian Standard Time)</label>
+              <input 
+                type="datetime-local"
+                value={config.countdownTarget || ''}
+                onChange={(e) => setConfig(prev => ({ ...prev, countdownTarget: e.target.value }))}
+                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 outline-none focus:ring-1 focus:ring-blue-600 text-xs font-extrabold text-slate-700"
+              />
+            </div>
+
+            {/* Countdown Event Location / Venue */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Meeting / Camp Venue Location</label>
+              <input 
+                type="text"
+                value={config.countdownLocation || ''}
+                onChange={(e) => setConfig(prev => ({ ...prev, countdownLocation: e.target.value }))}
+                placeholder="e.g., Seminar Hall, Left Block / Teams Meet"
+                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 outline-none focus:ring-1 focus:ring-blue-600 text-xs font-extrabold text-slate-700"
+              />
+            </div>
+
+            {/* Optional Registration or Live Link */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Action Call Resource Link (Optional)</label>
+              <input 
+                type="text"
+                value={config.countdownEventLink || ''}
+                onChange={(e) => setConfig(prev => ({ ...prev, countdownEventLink: e.target.value }))}
+                placeholder="e.g., https://forms.gle/xyz / Meeting Link"
+                className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl px-4 outline-none focus:ring-1 focus:ring-blue-600 text-xs font-semibold text-slate-705 font-mono"
+              />
+            </div>
+
+            {/* Brief Description */}
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Brief Event / Agenda Description</label>
+              <textarea 
+                rows={3}
+                value={config.countdownDescription || ''}
+                onChange={(e) => setConfig(prev => ({ ...prev, countdownDescription: e.target.value }))}
+                placeholder="Provide a sentence detailing the upcoming meeting requirements or directives."
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 outline-none focus:ring-1 focus:ring-blue-600 text-xs font-extrabold text-slate-700 leading-relaxed"
+              />
             </div>
 
           </div>
