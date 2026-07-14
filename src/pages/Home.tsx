@@ -555,7 +555,12 @@ export default function Home() {
           <div className="flex flex-row items-center justify-between gap-3 sm:gap-6 md:gap-8">
             
             {/* Left Box: Official College Logo Badge */}
-            <div className="w-12 h-12 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white p-1 sm:p-2 bg-gradient-to-br from-white to-slate-50 rounded-xl sm:rounded-[1.3rem] shadow-2xl shrink-0 flex items-center justify-center transform hover:rotate-2 transition-transform duration-300 border border-white/20">
+            <div 
+              className="w-12 h-12 sm:w-20 sm:h-20 md:w-24 md:h-24 p-1 sm:p-2 rounded-xl sm:rounded-[1.3rem] shadow-2xl shrink-0 flex items-center justify-center transform hover:rotate-2 transition-transform duration-300 border border-white/20"
+              style={{
+                background: theme === 'dark' ? 'linear-gradient(to bottom right, #0f172a, #020617)' : 'linear-gradient(to bottom right, #ffffff, #f8fafc)'
+              }}
+            >
               <img 
                 src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" 
                 alt="NSS College Ottapalam Emblem" 
@@ -1823,7 +1828,12 @@ export default function Home() {
           
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-white/5 pb-10">
             <div className="flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
-              <div className="w-14 h-14 bg-white p-1.5 rounded-2xl shadow-xl shrink-0">
+              <div 
+                className="w-14 h-14 p-1.5 rounded-2xl shadow-xl shrink-0 border border-slate-200 dark:border-slate-800 flex items-center justify-center"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff'
+                }}
+              >
                 <img 
                   src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" 
                   alt="NSS College Logo" 
@@ -1868,6 +1878,25 @@ export default function Home() {
               >
                 <MessageCircle size={18} />
               </a>
+            </div>
+          </div>
+
+          {/* Project Conception & Initiative Recognition */}
+          <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3.5 bg-white/5 border border-white/10 px-5 py-3 rounded-2xl shadow-inner max-w-lg">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400">
+                <Sparkles size={16} className="animate-pulse" />
+              </div>
+              <div className="text-left">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-orange-400 block">Platform Conception & Initiative</span>
+                <span className="text-[10px] text-white font-black uppercase tracking-wider">
+                  Abhinav V A <span className="text-slate-400 font-medium lowercase">(Unit 36 Volunteer Secretary 2024-26)</span>
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10 text-slate-400 text-[9px] font-bold uppercase tracking-widest">
+              <span>Status: Active Service</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           </div>
           

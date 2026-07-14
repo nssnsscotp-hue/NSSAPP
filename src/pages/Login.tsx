@@ -725,7 +725,12 @@ export default function Login() {
             transition={{ type: 'spring', stiffness: 150, damping: 20 }}
             className="flex items-center justify-center gap-5 mb-8"
           >
-            <div className="w-20 h-20 bg-white/85 dark:bg-slate-900 p-3.5 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 flex items-center justify-center transform hover:rotate-3 transition duration-300">
+            <div 
+              className="w-20 h-20 p-3.5 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 flex items-center justify-center transform hover:rotate-3 transition duration-300"
+              style={{
+                backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff'
+              }}
+            >
               <img 
                 src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" 
                 alt="College Logo" 

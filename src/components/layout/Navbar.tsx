@@ -158,7 +158,12 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2 sm:gap-4 group">
               <div className="flex items-center -space-x-3.5 sm:-space-x-4 transition-transform group-hover:scale-105 duration-500">
-                <div className="w-10 h-10 sm:w-12 md:w-14 md:h-14 bg-white dark:bg-slate-950 rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 dark:border-slate-850 p-1 md:p-1.5 z-20">
+                <div 
+                  className="w-10 h-10 sm:w-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shadow-md border border-slate-100 dark:border-slate-850 p-1 md:p-1.5 z-20"
+                  style={{
+                    backgroundColor: theme === 'dark' ? '#020617' : '#ffffff'
+                  }}
+                >
                   <img 
                     src="https://i.ibb.co/k6WG4cv2/1000350739-removebg-preview.png" 
                     alt="College Logo" 

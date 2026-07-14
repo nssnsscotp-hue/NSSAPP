@@ -476,6 +476,68 @@ export default function About() {
           )}
         </AnimatePresence>
 
+        {/* PROJECT INITIATIVE & LEADERSHIP RECOGNITION */}
+        <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white rounded-[2.5rem] border border-slate-800 p-8 sm:p-12 shadow-2xl">
+          {/* Decorative graphic background glows */}
+          <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-brand-500/10 to-transparent rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute -bottom-20 right-0 w-[300px] h-[300px] bg-gradient-to-bl from-orange-500/10 to-transparent rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] pointer-events-none" />
+
+          <div className="relative z-10 max-w-5xl mx-auto flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
+            
+            {/* Visual Graphic Representation */}
+            <div className="w-full lg:w-1/3 flex justify-center shrink-0">
+              <div className="relative group">
+                {/* Outer animated rotating glowing border */}
+                <div className="absolute -inset-1 bg-gradient-to-r from-brand-500 via-orange-500 to-amber-500 rounded-[2rem] blur-lg opacity-40 group-hover:opacity-100 transition-opacity duration-700 animate-pulse" />
+                
+                {/* Main badge frame */}
+                <div className="relative bg-slate-950/90 border border-white/10 rounded-[1.8rem] p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-3xl">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-orange-500 flex items-center justify-center text-white shadow-xl shadow-brand-500/20">
+                    <Sparkles size={28} className="text-white animate-pulse" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-brand-400 block">NSS Leadership</span>
+                    <h4 className="text-lg font-black tracking-tight uppercase">Abhinav V A</h4>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-none">Volunteer Secretary</p>
+                    <span className="inline-block text-[9px] px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-slate-300 font-bold uppercase tracking-widest mt-2">
+                      Batch 2024 - 2026
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Written tribute content */}
+            <div className="flex-1 space-y-5 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-500/10 border border-brand-500/20 text-brand-400 rounded-full text-[9px] font-black uppercase tracking-widest w-fit mx-auto lg:mx-0">
+                <Award size={12} />
+                <span>Project Conception & Digital Vision</span>
+              </div>
+              
+              <h2 className="text-xl sm:text-2.5xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">
+                Conceived & Pioneered for the Service of Tomorrow
+              </h2>
+              
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed font-medium">
+                This digital volunteer coordination portal is an official system conceptualized, initiated, and actively championed by <strong className="text-white font-bold">Abhinav V A</strong> during his service tenure as the <strong className="text-orange-400 font-bold">Volunteer Secretary (2024-26 Batch)</strong> of NSS Unit 36 at NSS College Ottapalam.
+              </p>
+              
+              <p className="text-slate-400 text-xs leading-relaxed font-semibold">
+                Driven by a vision to automate urgent blood bank inquiries, student service logs, and public emergency responses, this application bridges traditional societal outreach with cutting-edge cloud infrastructure to deliver real-time, life-saving impacts for the community.
+              </p>
+
+              <div className="pt-2 border-t border-white/5 flex flex-wrap justify-center lg:justify-start gap-4 text-[10px] font-mono text-slate-500 uppercase font-black tracking-wide">
+                <span className="flex items-center gap-1.5"><CheckCircle size={12} className="text-brand-500" /> Student Initiative</span>
+                <span className="flex items-center gap-1.5"><CheckCircle size={12} className="text-brand-500" /> Administrative Approval</span>
+                <span className="flex items-center gap-1.5"><CheckCircle size={12} className="text-brand-500" /> Live Community Impact</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
         {/* MOTTO CALL TO ACTION CARDS */}
         <section className="bg-slate-950 text-white rounded-[2.5rem] p-8 sm:p-12 relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-gradient-to-br from-brand-600/10 to-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />

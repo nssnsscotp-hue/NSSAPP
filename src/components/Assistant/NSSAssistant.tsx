@@ -85,7 +85,7 @@ export default function NSSAssistant() {
           - Principal: Shri. Rajesh R.
           - Programme Officer (Unit 36): Dr. Aparna B (Assistant Professor, English Department).
           - Programme Officer (Unit 94): Dr. Rakhikrishna R (Assistant Professor, Physics Department).
-          - Volunteer Secretary: Mr. Abhinav V A.
+          - Volunteer Secretary (Unit 36): Mr. Abhinav V A.
           - Motto: "Not Me, But You".
           - Activities: Regular camping, blood donation, environmental protection, and social service.
           - Complaints: Guide users to the 'Complaints' section of the portal for serious issues.
